@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Khách thuê: {{ tenant.name }}{% endblock %}
+{% block content %}
+<h2>Khách thuê: {{ tenant.name }}</h2>
+<p><strong>SĐT:</strong> {{ tenant.phone or '-' }} | <strong>Email:</strong> {{ tenant.email or '-' }}</p>
+
+<a href="{{ url_for('create_contract', tenant_id=tenant.id) }}" class="btn btn-success mb-4">
+    <i class="bi bi-file-contract"></i> Tạo hợp đồng mới
+</a>
+
+<h4>Danh sách hợp đồng</h4>
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Ngày bắt đầu</th>
+            <th>Thời hạn (tháng)</th>
+            <th>Ngày kết thúc</th>
+            <th>Đã gia hạn?</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for contract in contracts %}
+        <tr>
+            <td>{{ contract.start_date }}</td>
+            <td>{{ contract.duration_months }}</td>
+            <td>{{ contract.end_date }}</td>
+            <td>{% if contract.is_extended %}Có{% else %}Không{% endif %}</td>
+            <td>
+                <a href="{{ url_for('edit_contract', contract_id=contract.id) }}" class="btn btn-sm btn-warning text-white me-1">Sửa</a>
+                    <form method="POST" action="{{ url_for('delete_contract', contract_id=contract.id) }}" class="d-inline"
+                    onsubmit="return confirm('Bạn có chắc muốn xóa hợp đồng này?')">
+                    <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                    </form>
+                <a href="{{ url_for('contract_detail', contract_id=contract.id) }}" class="btn btn-sm btn-info">Chi tiết</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5" class="text-center">Chưa có hợp đồng nào</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hóa đơn tháng {{ bill.month.strftime('%m/%Y') }}</title>
+    <style>
+        body { font-family: DejaVu Sans, Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { text-align: center; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #000; padding: 12px; text-align: left; }
+        th { background-color: #f0f0f0; }
+        .total { font-size: 1.6em; font-weight: bold; text-align: right; margin-top: 30px; }
+        .footer { margin-top: 60px; text-align: center; color: #555; }
+        @media print {
+            body { margin: 20px; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>HÓA ĐƠN TIỀN PHÒNG TRỌ</h1>
+        <h3>Tháng {{ bill.month.strftime('%m/%Y') }}</h3>
+    </div>
+
+    <p><strong>Chủ trọ:</strong> {{ current_user.username }}</p>
+    <p><strong>Khách thuê:</strong> {{ tenant.name }}</p>
+    <p><strong>Phòng:</strong> {{ room.name }}</p>
+    <p><strong>SĐT:</strong> {{ tenant.phone or 'Chưa có' }}</p>
+
+    <table>
+        <tr><th>Mục</th><th>Chi tiết</th><th>Thành tiền (VNĐ)</th></tr>
+        <tr><td>Tiền thuê phòng</td><td>1 tháng</td><td>{{ "{:,.0f}".format(room.rent_price) }}</td></tr>
+        <tr><td>Phí Internet</td><td>Cố định</td><td>{{ "{:,.0f}".format(room.internet_fee) }}</td></tr>
+        <tr><td>Tiền điện</td><td>{{ bill.electricity_usage }} kWh × 4.000 đ</td><td>{{ "{:,.0f}".format(electricity_cost) }}</td></tr>
+        <tr><td>Tiền nước</td><td>{{ bill.water_usage }} m³ (bậc thang)</td><td>{{ "{:,.0f}".format(water_cost) }}</td></tr>
+    </table>
+
+    <p><strong>Chi tiết tiền nước:</strong><br>{{ water_detail | safe }}</p>
+
+    <div class="total">
+        TỔNG TIỀN: <span style="color: red; font-size: 1.8em;">{{ "{:,.0f}".format(bill.total) }} VNĐ</span>
+    </div>
+
+    <div class="footer">
+        <p>Ngày in: {{ now().strftime('%d/%m/%Y %H:%M') }}</p>
+        <p>Xin cảm ơn quý khách!</p>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin-top: 40px;">
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 18px;">🖨️ In hóa đơn (Ctrl+P)</button>
+    </div>
+
+    <script>
+        // Tự động mở hộp thoại in khi load trang (tùy chọn)
+        // window.onload = function() { window.print(); }
+    </script>
+</body>
+</html>

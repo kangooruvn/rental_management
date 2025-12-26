@@ -1,0 +1,433 @@
+# This is a complete web application for managing rental rooms using Flask.
+# To run this application:
+# 1. Install required packages (if running locally): pip install flask flask-sqlalchemy flask-login werkzeug
+# 2. Save this code to a file, e.g., app.py
+# 3. Run: python app.py
+# 4. Access via browser: http://127.0.0.1:5000/
+# Default admin login: username='admin', password='admin'
+
+from flask import Flask, render_template, request, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
+import os
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this to a secure key
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///rental.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+# Models
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(150), nullable=False)
+    role = db.Column(db.String(50), nullable=False)  # 'admin' or 'user'
+
+class Room(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    rent_price = db.Column(db.Float, nullable=False)
+    internet_fee = db.Column(db.Float, nullable=False, default=0.0)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+class Tenant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(150))
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
+
+class Contract(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    duration_months = db.Column(db.Integer, nullable=False)
+    end_date = db.Column(db.Date)
+    is_extended = db.Column(db.Boolean, default=False)
+
+class Bill(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
+    month = db.Column(db.Date, nullable=False)  # First day of the month
+    electricity_usage = db.Column(db.Float, default=0.0)
+    water_usage = db.Column(db.Float, default=0.0)
+    total = db.Column(db.Float, nullable=False)
+    paid = db.Column(db.Boolean, default=False)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# Helper functions
+def calculate_water_cost(usage):
+    if usage <= 5:
+        return usage * 16000
+    else:
+        return (5 * 16000) + ((usage - 5) * 27000)
+
+def calculate_bill(contract, electricity_usage, water_usage):
+    room = Room.query.get(Tenant.query.get(contract.tenant_id).room_id)
+    electricity_cost = electricity_usage * 4000
+    water_cost = calculate_water_cost(water_usage)
+    total = room.rent_price + room.internet_fee + electricity_cost + water_cost
+    return total
+
+# Routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        flash('Invalid username or password')
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+@app.route('/register', methods=['GET', 'POST'])
+@login_required
+def register():
+    if current_user.role != 'admin':
+        flash('Access denied')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        username = request.form['username']
+        password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
+        role = request.form['role']
+        new_user = User(username=username, password=password, role=role)
+        db.session.add(new_user)
+        db.session.commit()
+        flash('User registered')
+        return redirect(url_for('dashboard'))
+    return render_template('register.html')
+
+@app.route('/')
+@login_required
+def dashboard():
+    rooms = Room.query.filter_by(user_id=current_user.id).all() if current_user.role != 'admin' else Room.query.all()
+    return render_template('dashboard.html', rooms=rooms)
+
+@app.route('/create_room', methods=['GET', 'POST'])
+@login_required
+def create_room():
+    if request.method == 'POST':
+        name = request.form['name']
+        rent_price = float(request.form['rent_price'])
+        internet_fee = float(request.form['internet_fee'])
+        new_room = Room(name=name, rent_price=rent_price, internet_fee=internet_fee, user_id=current_user.id)
+        db.session.add(new_room)
+        db.session.commit()
+        flash('Room created')
+        return redirect(url_for('dashboard'))
+    return render_template('create_room.html')
+
+@app.route('/room/<int:room_id>')
+@login_required
+def room_detail(room_id):
+    room = Room.query.get_or_404(room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('dashboard'))
+    tenants = Tenant.query.filter_by(room_id=room_id).all()
+    return render_template('room_detail.html', room=room, tenants=tenants)
+
+@app.route('/create_tenant/<int:room_id>', methods=['GET', 'POST'])
+@login_required
+def create_tenant(room_id):
+    room = Room.query.get_or_404(room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        name = request.form['name']
+        phone = request.form['phone']
+        email = request.form['email']
+        new_tenant = Tenant(name=name, phone=phone, email=email, room_id=room_id)
+        db.session.add(new_tenant)
+        db.session.commit()
+        flash('Tenant created')
+        return redirect(url_for('room_detail', room_id=room_id))
+    return render_template('create_tenant.html', room=room)
+
+@app.route('/create_contract/<int:tenant_id>', methods=['GET', 'POST'])
+@login_required
+def create_contract(tenant_id):
+    tenant = Tenant.query.get_or_404(tenant_id)
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d').date()
+        duration_months = int(request.form['duration_months'])
+        end_date = start_date + timedelta(days=30 * duration_months)  # Approximate
+        new_contract = Contract(tenant_id=tenant_id, start_date=start_date, duration_months=duration_months, end_date=end_date)
+        db.session.add(new_contract)
+        db.session.commit()
+        flash('Contract created')
+        return redirect(url_for('tenant_detail', tenant_id=tenant_id))
+    return render_template('create_contract.html', tenant=tenant)
+
+@app.route('/tenant/<int:tenant_id>')
+@login_required
+def tenant_detail(tenant_id):
+    tenant = Tenant.query.get_or_404(tenant_id)
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('dashboard'))
+    contracts = Contract.query.filter_by(tenant_id=tenant_id).all()
+    return render_template('tenant_detail.html', tenant=tenant, contracts=contracts)
+
+@app.route('/extend_contract/<int:contract_id>', methods=['POST'])
+@login_required
+def extend_contract(contract_id):
+    contract = Contract.query.get_or_404(contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('dashboard'))
+    additional_months = int(request.form['additional_months'])
+    contract.duration_months += additional_months
+    contract.end_date += timedelta(days=30 * additional_months)
+    contract.is_extended = True
+    db.session.commit()
+    flash('Contract extended')
+    return redirect(url_for('contract_detail', contract_id=contract_id))
+
+@app.route('/contract/<int:contract_id>')
+@login_required
+def contract_detail(contract_id):
+    contract = Contract.query.get_or_404(contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    if tenant is None:
+        flash('Khách thuê liên kết với hợp đồng không tồn tại. Vui lòng kiểm tra dữ liệu.', 'danger')
+        return redirect(url_for('dashboard'))
+    room = Room.query.get(tenant.room_id)
+    if room is None:
+        flash('Phòng liên kết không tồn tại. Vui lòng kiểm tra dữ liệu.', 'danger')
+        return redirect(url_for('dashboard'))
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền truy cập hợp đồng này', 'danger')
+        return redirect(url_for('dashboard'))
+    bills = Bill.query.filter_by(contract_id=contract_id).all()
+    return render_template('contract_detail.html', contract=contract, tenant=tenant, bills=bills)
+
+@app.route('/create_bill/<int:contract_id>', methods=['GET', 'POST'])
+@login_required
+def create_bill(contract_id):
+    contract = Contract.query.get_or_404(contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    if tenant is None:
+        flash('Khách thuê không tồn tại', 'danger')
+        return redirect(url_for('dashboard'))
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền truy cập', 'danger')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        try:
+            # Lấy và kiểm tra dữ liệu
+            month_input = request.form.get('month')
+            if not month_input:
+                flash('Vui lòng chọn tháng hóa đơn', 'danger')
+                return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
+
+            electricity_usage = float(request.form.get('electricity_usage', 0))
+            water_usage = float(request.form.get('water_usage', 0))
+
+            if electricity_usage < 0 or water_usage < 0:
+                flash('Số điện/nước không được âm', 'danger')
+                return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
+
+            # Chuyển tháng YYYY-MM thành ngày 01
+            month_str = month_input + '-01'
+            month_date = datetime.strptime(month_str, '%Y-%m-%d').date()
+
+            # Tính tổng tiền
+            total = calculate_bill(contract, electricity_usage, water_usage)
+
+            # Tạo hóa đơn mới
+            new_bill = Bill(
+                contract_id=contract_id,
+                month=month_date,
+                electricity_usage=electricity_usage,
+                water_usage=water_usage,
+                total=total
+            )
+            db.session.add(new_bill)
+            db.session.commit()
+
+            flash(f'Hóa đơn tháng {month_date.strftime("%m/%Y")} đã được tạo thành công!', 'success')
+            return redirect(url_for('contract_detail', contract_id=contract_id))
+
+        except ValueError as e:
+            flash('Dữ liệu nhập không hợp lệ (kiểm tra lại số điện/nước hoặc tháng)', 'danger')
+            return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
+        except Exception as e:
+            db.session.rollback()
+            flash('Có lỗi xảy ra khi tạo hóa đơn. Vui lòng thử lại.', 'danger')
+            return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
+
+    # GET request: hiển thị form
+    return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
+
+@app.route('/pay_bill/<int:bill_id>', methods=['POST'])
+@login_required
+def pay_bill(bill_id):
+    bill = Bill.query.get_or_404(bill_id)
+    contract = Contract.query.get(bill.contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('dashboard'))
+    bill.paid = True
+    db.session.commit()
+    flash('Bill paid')
+    return redirect(url_for('contract_detail', contract_id=bill.contract_id))
+
+@app.route('/bill_print/<int:bill_id>')
+@login_required
+def bill_print(bill_id):
+    bill = Bill.query.get_or_404(bill_id)
+    contract = Contract.query.get(bill.contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    if tenant is None:
+        flash('Khách thuê không tồn tại', 'danger')
+        return redirect(url_for('dashboard'))
+    room = Room.query.get(tenant.room_id)
+    if room is None:
+        flash('Phòng không tồn tại', 'danger')
+        return redirect(url_for('dashboard'))
+
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền xem hóa đơn này', 'danger')
+        return redirect(url_for('dashboard'))
+
+    electricity_cost = bill.electricity_usage * 4000
+    water_cost = calculate_water_cost(bill.water_usage)
+
+    if bill.water_usage > 5:
+        water_detail = f"5 khối đầu: 5 × 16.000 = 80.000 đ<br>Các khối tiếp: {(bill.water_usage - 5):.2f} × 27.000 = {((bill.water_usage - 5)*27000):,.0f} đ"
+    else:
+        water_detail = f"5 khối đầu: {bill.water_usage:.2f} × 16.000 = {water_cost:,.0f} đ<br>Các khối tiếp: 0 × 27.000 = 0 đ"
+
+    return render_template('bill_print.html',
+                           bill=bill,
+                           tenant=tenant,
+                           room=room,
+                           electricity_cost=electricity_cost,
+                           water_cost=water_cost,
+                           water_detail=water_detail)
+
+# --- Sửa hợp đồng ---
+@app.route('/edit_contract/<int:contract_id>', methods=['GET', 'POST'])
+@login_required
+def edit_contract(contract_id):
+    contract = Contract.query.get_or_404(contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền chỉnh sửa hợp đồng này', 'danger')
+        return redirect(url_for('dashboard'))
+
+    if Bill.query.filter_by(contract_id=contract_id).first():
+        flash('Không thể sửa hợp đồng đã có hóa đơn', 'danger')
+        return redirect(url_for('contract_detail', contract_id=contract_id))
+
+    if request.method == 'POST':
+        contract.start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d').date()
+        contract.duration_months = int(request.form['duration_months'])
+        contract.end_date = contract.start_date + timedelta(days=30 * contract.duration_months)  # xấp xỉ
+        db.session.commit()
+        flash('Hợp đồng đã được cập nhật thành công!', 'success')
+        return redirect(url_for('contract_detail', contract_id=contract_id))
+
+    return render_template('edit_contract.html', contract=contract, tenant=tenant)
+
+# --- Xóa hợp đồng ---
+@app.route('/delete_contract/<int:contract_id>', methods=['POST'])
+@login_required
+def delete_contract(contract_id):
+    contract = Contract.query.get_or_404(contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền', 'danger')
+        return redirect(url_for('dashboard'))
+
+    if Bill.query.filter_by(contract_id=contract_id).first():
+        flash('Không thể xóa hợp đồng đã có hóa đơn', 'danger')
+        return redirect(url_for('contract_detail', contract_id=contract_id))
+
+    db.session.delete(contract)
+    db.session.commit()
+    flash('Hợp đồng đã được xóa thành công', 'success')
+    return redirect(url_for('tenant_detail', tenant_id=tenant.id))
+
+# --- Sửa hóa đơn ---
+@app.route('/edit_bill/<int:bill_id>', methods=['GET', 'POST'])
+@login_required
+def edit_bill(bill_id):
+    bill = Bill.query.get_or_404(bill_id)
+    contract = Contract.query.get(bill.contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền', 'danger')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        month_str = request.form['month'] + '-01'
+        bill.month = datetime.strptime(month_str, '%Y-%m-%d').date()
+        bill.electricity_usage = float(request.form['electricity_usage'])
+        bill.water_usage = float(request.form['water_usage'])
+        bill.total = calculate_bill(contract, bill.electricity_usage, bill.water_usage)
+        db.session.commit()
+        flash('Hóa đơn đã được cập nhật!', 'success')
+        return redirect(url_for('contract_detail', contract_id=contract.id))
+
+    return render_template('edit_bill.html', bill=bill, tenant=tenant, room=room, contract=contract)
+
+# --- Xóa hóa đơn ---
+@app.route('/delete_bill/<int:bill_id>', methods=['POST'])
+@login_required
+def delete_bill(bill_id):
+    bill = Bill.query.get_or_404(bill_id)
+    contract = Contract.query.get(bill.contract_id)
+    tenant = Tenant.query.get(contract.tenant_id)
+    room = Room.query.get(tenant.room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền', 'danger')
+        return redirect(url_for('dashboard'))
+
+    db.session.delete(bill)
+    db.session.commit()
+    flash('Hóa đơn đã được xóa', 'success')
+    return redirect(url_for('contract_detail', contract_id=contract.id))
+
+# Initialize DB and create default admin
+if __name__ == '__main__':
+    if not os.path.exists('rental.db'):
+        with app.app_context():
+            db.create_all()
+            admin = User(username='admin', password=generate_password_hash('admin', method='pbkdf2:sha256'), role='admin')
+            db.session.add(admin)
+            db.session.commit()
+    app.run(debug=True)

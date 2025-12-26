@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Thêm khách thuê - Phòng {{ room.name }}{% endblock %}
+{% block content %}
+<h2>Thêm khách thuê mới cho phòng {{ room.name }}</h2>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4>Thông tin khách thuê</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Số điện thoại</label>
+                        <input type="text" name="phone" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Thêm khách thuê</button>
+                    <a href="{{ url_for('room_detail', room_id=room.id) }}" class="btn btn-secondary">Quay lại</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

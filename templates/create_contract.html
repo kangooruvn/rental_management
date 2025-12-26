@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Tạo hợp đồng - {{ tenant.name }}{% endblock %}
+{% block content %}
+<h2>Tạo hợp đồng thuê cho {{ tenant.name }}</h2>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h4>Thông tin hợp đồng</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Ngày bắt đầu thuê <span class="text-danger">*</span></label>
+                        <input type="date" name="start_date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Thời hạn thuê (tháng) <span class="text-danger">*</span></label>
+                        <input type="number" name="duration_months" min="1" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Tạo hợp đồng</button>
+                    <a href="{{ url_for('tenant_detail', tenant_id=tenant.id) }}" class="btn btn-secondary">Quay lại</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

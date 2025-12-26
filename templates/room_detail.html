@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Phòng {{ room.name }}{% endblock %}
+{% block content %}
+<h2>Phòng: {{ room.name }}</h2>
+<p><strong>Tiền thuê:</strong> {{ "{:,.0f}".format(room.rent_price) }} đ | <strong>Internet:</strong> {{ "{:,.0f}".format(room.internet_fee) }} đ</p>
+
+<a href="{{ url_for('create_tenant', room_id=room.id) }}" class="btn btn-primary mb-4">
+    <i class="bi bi-person-plus"></i> Thêm khách thuê
+</a>
+
+<h4>Danh sách khách thuê</h4>
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Họ tên</th>
+            <th>Số điện thoại</th>
+            <th>Email</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for tenant in tenants %}
+        <tr>
+            <td><a href="{{ url_for('tenant_detail', tenant_id=tenant.id) }}">{{ tenant.name }}</a></td>
+            <td>{{ tenant.phone or '-' }}</td>
+            <td>{{ tenant.email or '-' }}</td>
+            <td><a href="{{ url_for('tenant_detail', tenant_id=tenant.id) }}" class="btn btn-sm btn-info">Chi tiết</a></td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4" class="text-center">Chưa có khách thuê nào</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Sửa hợp đồng - {{ tenant.name }}{% endblock %}
+{% block content %}
+<h2>Sửa hợp đồng cho {{ tenant.name }}</h2>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h4>Chỉnh sửa thông tin hợp đồng</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Ngày bắt đầu thuê</label>
+                        <input type="date" name="start_date" value="{{ contract.start_date }}" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Thời hạn thuê (tháng)</label>
+                        <input type="number" name="duration_months" value="{{ contract.duration_months }}" min="1" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-warning">Cập nhật hợp đồng</button>
+                    <a href="{{ url_for('contract_detail', contract_id=contract.id) }}" class="btn btn-secondary">Quay lại</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

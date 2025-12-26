@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Thêm người dùng mới{% endblock %}
+{% block content %}
+<h2>Thêm người dùng mới (Chỉ Admin)</h2>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white">
+                <h4>Thông tin tài khoản</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Tên đăng nhập</label>
+                        <input type="text" name="username" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mật khẩu</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Vai trò</label>
+                        <select name="role" class="form-select">
+                            <option value="admin">Admin (quản lý toàn bộ)</option>
+                            <option value="user">User (chỉ quản lý phòng của mình)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-dark">Tạo tài khoản</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Quay lại</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

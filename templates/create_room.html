@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Thêm phòng mới{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h4>Thêm phòng trọ mới</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Tên phòng (ví dụ: Phòng 101)</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tiền thuê/tháng (VNĐ)</label>
+                        <input type="number" name="rent_price" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phí Internet/tháng (VNĐ)</label>
+                        <input type="number" name="internet_fee" class="form-control" value="0">
+                    </div>
+                    <button type="submit" class="btn btn-success">Tạo phòng</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Quay lại</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
