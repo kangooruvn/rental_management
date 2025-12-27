@@ -439,5 +439,7 @@ if __name__ == '__main__':
             print("Tài khoản admin đã được tạo thành công!")
         else:
             print("Tài khoản admin đã tồn tại.")
-
-    app.run(debug=True)
+    # Render tự set biến PORT, mặc định fallback 5000 nếu local
+    port = int(os.environ.get('PORT', 5000))
+    # Bind 0.0.0.0 để Render truy cập được
+    app.run(host='0.0.0.0', port=port, debug=False)  # debug=False cho production
