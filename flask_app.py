@@ -424,10 +424,20 @@ def delete_bill(bill_id):
 
 # Initialize DB and create default admin
 if __name__ == '__main__':
-    if not os.path.exists('rental.db'):
-        with app.app_context():
-            db.create_all()
-            admin = User(username='admin', password=generate_password_hash('admin', method='pbkdf2:sha256'), role='admin')
+    with app.app_context():
+        db.create_all()  # Tạo bảng nếu chưa có (an toàn nếu đã có)
+
+        # Chỉ tạo admin nếu chưa tồn tại
+        if not User.query.filter_by(username='admin').first():
+            admin = User(
+                username='admin',
+                password=generate_password_hash('admin', method='pbkdf2:sha256'),
+                role='admin'
+            )
             db.session.add(admin)
             db.session.commit()
+            print("Tài khoản admin đã được tạo thành công!")
+        else:
+            print("Tài khoản admin đã tồn tại.")
+
     app.run(debug=True)
