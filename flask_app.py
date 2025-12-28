@@ -15,7 +15,8 @@ import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this to a secure key
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///rental.db'
+# Dùng Postgres trên Render, fallback SQLite khi chạy local
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///rental.db').replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
