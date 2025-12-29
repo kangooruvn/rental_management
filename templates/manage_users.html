@@ -14,42 +14,59 @@
                     <th>ID</th>
                     <th>Tên đăng nhập</th>
                     <th>Vai trò</th>
+                    <th>Khách thuê gán (nếu có)</th>
                     <th>Thao tác</th>
                 </tr>
             </thead>
             <tbody>
-                {% for user in users %}
-                <tr>
-                    <td>{{ user.id }}</td>
-                    <td>{{ user.username }}</td>
-                    <td>
-                        {% if user.role == 'admin' %}
-                        <span class="badge bg-danger">Admin</span>
-                        {% elif user.role == 'user' %}
-                        <span class="badge bg-primary">Chủ trọ</span>
-                        {% elif user.role == 'tenant' %}
-                        <span class="badge bg-info">Khách thuê</span>
-                        {% else %}
-                        <span class="badge bg-secondary">{{ user.role }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-sm btn-warning text-white me-1">
-                            Sửa
-                        </a>
-                        {% if user.id != current_user.id and not (user.role == 'admin' and User.query.filter_by(role='admin').count() == 1) %}
-                        <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="d-inline"
-                              onsubmit="return confirm('Bạn có chắc muốn xóa người dùng này?')">
-                            <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
-                        </form>
-                        {% endif %}
-                    </td>
-                </tr>
+                {% if users %}
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>
+                            {% if user.role == 'admin' %}
+                            <span class="badge bg-danger">Admin</span>
+                            {% elif user.role == 'user' %}
+                            <span class="badge bg-primary">Chủ trọ</span>
+                            {% elif user.role == 'tenant' %}
+                            <span class="badge bg-info">Khách thuê</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ user.role }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.role == 'tenant' and user.tenant_id %}
+                                {% set tenant = Tenant.query.get(user.tenant_id) %}
+                                {% if tenant %}
+                                    {{ tenant.name }} (Phòng {{ Room.query.get(tenant.room_id).name }})
+                                {% else %}
+                                    <span class="text-muted">Khách thuê đã xóa</span>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-sm btn-warning text-white me-1">
+                                Sửa
+                            </a>
+                            {% if user.id != current_user.id %}
+                                {% if not (user.role == 'admin' and User.query.filter_by(role='admin').count() == 1) %}
+                                <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="d-inline"
+                                      onsubmit="return confirm('Bạn có chắc muốn xóa người dùng này?')">
+                                    <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                                </form>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
                 {% else %}
-                <tr>
-                    <td colspan="4" class="text-center">Chưa có người dùng nào</td>
-                </tr>
-                {% endfor %}
+                    <tr>
+                        <td colspan="5" class="text-center">Chưa có người dùng nào</td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
