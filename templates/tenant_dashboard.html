@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Hóa đơn của tôi - {{ tenant.name }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Xin chào {{ tenant.name }}</h2>
+            <p class="mb-0"><strong>Phòng:</strong> {{ room.name }}</p>
+            <p><strong>SĐT:</strong> {{ tenant.phone or 'Chưa có' }}</p>
+        </div>
+        <a href="{{ url_for('tenant_logout') }}" class="btn btn-outline-secondary">Đăng xuất</a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4>Danh sách hóa đơn</h4>
+        </div>
+        <div class="card-body p-0">
+            {% if bills %}
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tháng</th>
+                            <th>Điện dùng (kWh)</th>
+                            <th>Tiền điện</th>
+                            <th>Nước dùng (m³)</th>
+                            <th>Tiền nước</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                            <th>In hóa đơn</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in bills %}
+                        <tr>
+                            <td>{{ bill.month.strftime('%m/%Y') }}</td>
+                            <td>{{ "%.1f" % bill.electricity_usage }}</td>
+                            <td>{{ "{:,.0f}".format(bill.electricity_usage * bill.electricity_price) }} đ</td>
+                            <td>{{ "%.4f" % bill.water_usage }}</td>
+                            <td>{{ "{:,.0f}".format((5 * 16000) + max(0, bill.water_usage - 5) * 27000) }} đ</td>
+                            <td class="fw-bold">{{ "{:,.0f}".format(bill.total) }} đ</td>
+                            <td>
+                                {% if bill.paid %}
+                                <span class="badge bg-success">Đã thanh toán</span>
+                                {% else %}
+                                <span class="badge bg-danger">Chưa thanh toán</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('bill_print', bill_id=bill.id) }}" target="_blank" class="btn btn-sm btn-danger text-white">
+                                    <i class="bi bi-printer"></i> In
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                Chưa có hóa đơn nào cho phòng này.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
