@@ -53,11 +53,23 @@ class Contract(db.Model):
     is_extended = db.Column(db.Boolean, default=False)
 
 class Bill(db.Model):
+    class Bill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
     month = db.Column(db.Date, nullable=False)  # First day of the month
-    electricity_usage = db.Column(db.Float, default=0.0)
-    water_usage = db.Column(db.Float, default=0.0)
+    
+    # Thêm fields mới cho chỉ số điện
+    electricity_old = db.Column(db.Float, default=0.0)  # Chỉ số cũ điện (1 thập phân)
+    electricity_new = db.Column(db.Float, default=0.0)  # Chỉ số mới điện (1 thập phân)
+    electricity_price = db.Column(db.Float, nullable=False, default=4000.0)  # Đơn giá điện (linh hoạt, mặc định 4000)
+    
+    # Thêm fields mới cho chỉ số nước
+    water_old = db.Column(db.Float, default=0.0)  # Chỉ số cũ nước (4 thập phân)
+    water_new = db.Column(db.Float, default=0.0)  # Chỉ số mới nước (4 thập phân)
+    
+    # Giữ fields cũ, nhưng giờ usage và total sẽ tính tự động
+    electricity_usage = db.Column(db.Float, default=0.0)  # Số điện dùng (tự tính)
+    water_usage = db.Column(db.Float, default=0.0)  # Số nước dùng (tự tính)
     total = db.Column(db.Float, nullable=False)
     paid = db.Column(db.Boolean, default=False)
 
@@ -72,12 +84,22 @@ def calculate_water_cost(usage):
     else:
         return (5 * 16000) + ((usage - 5) * 27000)
 
-def calculate_bill(contract, electricity_usage, water_usage):
+def calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, electricity_price=4000.0):
     room = Room.query.get(Tenant.query.get(contract.tenant_id).room_id)
-    electricity_cost = electricity_usage * 4000
+    
+    # Tính số dùng
+    electricity_usage = electricity_new - electricity_old if electricity_new >= electricity_old else 0
+    water_usage = water_new - water_old if water_new >= water_old else 0
+    
+    # Tính tiền điện
+    electricity_cost = electricity_usage * electricity_price
+    
+    # Tính tiền nước
     water_cost = calculate_water_cost(water_usage)
+    
+    # Tổng
     total = room.rent_price + room.internet_fee + electricity_cost + water_cost
-    return total
+    return total, electricity_usage, water_usage, electricity_cost, water_cost
 
 # Routes
 @app.route('/login', methods=['GET', 'POST'])
@@ -233,59 +255,40 @@ def contract_detail(contract_id):
 def create_bill(contract_id):
     contract = Contract.query.get_or_404(contract_id)
     tenant = Tenant.query.get(contract.tenant_id)
-    if tenant is None:
-        flash('Khách thuê không tồn tại', 'danger')
-        return redirect(url_for('dashboard'))
     room = Room.query.get(tenant.room_id)
     if current_user.role != 'admin' and room.user_id != current_user.id:
-        flash('Bạn không có quyền truy cập', 'danger')
+        flash('Access denied')
         return redirect(url_for('dashboard'))
-
+    
     if request.method == 'POST':
-        try:
-            # Lấy và kiểm tra dữ liệu
-            month_input = request.form.get('month')
-            if not month_input:
-                flash('Vui lòng chọn tháng hóa đơn', 'danger')
-                return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
-
-            electricity_usage = float(request.form.get('electricity_usage', 0))
-            water_usage = float(request.form.get('water_usage', 0))
-
-            if electricity_usage < 0 or water_usage < 0:
-                flash('Số điện/nước không được âm', 'danger')
-                return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
-
-            # Chuyển tháng YYYY-MM thành ngày 01
-            month_str = month_input + '-01'
-            month_date = datetime.strptime(month_str, '%Y-%m-%d').date()
-
-            # Tính tổng tiền
-            total = calculate_bill(contract, electricity_usage, water_usage)
-
-            # Tạo hóa đơn mới
-            new_bill = Bill(
-                contract_id=contract_id,
-                month=month_date,
-                electricity_usage=electricity_usage,
-                water_usage=water_usage,
-                total=total
-            )
-            db.session.add(new_bill)
-            db.session.commit()
-
-            flash(f'Hóa đơn tháng {month_date.strftime("%m/%Y")} đã được tạo thành công!', 'success')
-            return redirect(url_for('contract_detail', contract_id=contract_id))
-
-        except ValueError as e:
-            flash('Dữ liệu nhập không hợp lệ (kiểm tra lại số điện/nước hoặc tháng)', 'danger')
-            return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
-        except Exception as e:
-            db.session.rollback()
-            flash('Có lỗi xảy ra khi tạo hóa đơn. Vui lòng thử lại.', 'danger')
-            return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
-
-    # GET request: hiển thị form
+        month_str = request.form['month'] + '-01'
+        month = datetime.strptime(month_str, '%Y-%m-%d').date()
+        
+        # Lấy chỉ số từ form
+        electricity_old = float(request.form['electricity_old'])
+        electricity_new = float(request.form['electricity_new'])
+        water_old = float(request.form['water_old'])
+        water_new = float(request.form['water_new'])
+        electricity_price = float(request.form['electricity_price'])  # Linh hoạt
+        
+        # Tính tự động
+        total, electricity_usage, water_usage, electricity_cost, water_cost = calculate_bill(
+            contract, electricity_old, electricity_new, water_old, water_new, electricity_price
+        )
+        
+        new_bill = Bill(
+            contract_id=contract_id, month=month,
+            electricity_old=electricity_old, electricity_new=electricity_new,
+            water_old=water_old, water_new=water_new,
+            electricity_price=electricity_price,
+            electricity_usage=electricity_usage, water_usage=water_usage,
+            total=total, paid=False
+        )
+        db.session.add(new_bill)
+        db.session.commit()
+        flash('Hóa đơn đã được tạo thành công!')
+        return redirect(url_for('contract_detail', contract_id=contract_id))
+    
     return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
 
 @app.route('/pay_bill/<int:bill_id>', methods=['POST'])
@@ -393,17 +396,26 @@ def edit_bill(bill_id):
     if current_user.role != 'admin' and room.user_id != current_user.id:
         flash('Bạn không có quyền', 'danger')
         return redirect(url_for('dashboard'))
-
+    
     if request.method == 'POST':
-        month_str = request.form['month'] + '-01'
-        bill.month = datetime.strptime(month_str, '%Y-%m-%d').date()
-        bill.electricity_usage = float(request.form['electricity_usage'])
-        bill.water_usage = float(request.form['water_usage'])
-        bill.total = calculate_bill(contract, bill.electricity_usage, bill.water_usage)
+        bill.month = datetime.strptime(request.form['month'] + '-01', '%Y-%m-%d').date()
+        
+        # Lấy chỉ số mới từ form
+        bill.electricity_old = float(request.form['electricity_old'])
+        bill.electricity_new = float(request.form['electricity_new'])
+        bill.water_old = float(request.form['water_old'])
+        bill.water_new = float(request.form['water_new'])
+        bill.electricity_price = float(request.form['electricity_price'])
+        
+        # Tính lại tự động
+        bill.total, bill.electricity_usage, bill.water_usage, _, _ = calculate_bill(
+            contract, bill.electricity_old, bill.electricity_new, bill.water_old, bill.water_new, bill.electricity_price
+        )
+        
         db.session.commit()
-        flash('Hóa đơn đã được cập nhật!', 'success')
+        flash('Hóa đơn đã được cập nhật!')
         return redirect(url_for('contract_detail', contract_id=contract.id))
-
+    
     return render_template('edit_bill.html', bill=bill, tenant=tenant, room=room, contract=contract)
 
 # --- Xóa hóa đơn ---
