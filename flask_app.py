@@ -143,17 +143,16 @@ def dashboard():
     
     # Tính tổng quan
     total_rooms = len(rooms)
-    occupied_rooms = sum(1 for room in rooms if Tenant.query.filter_by(room_id=room.id).first())
-    
-    # Tổng tiền phải thu tháng hiện tại
-    current_month = datetime.now().replace(day=1)
+    occupied_rooms = 0
     total_due = 0
     total_paid = 0
     overdue_bills = 0
-    
+    current_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     for room in rooms:
-        room.tenant = Tenant.query.filter_by(room_id=room.id).first()
+        tenant = Tenant.query.filter_by(room_id=room.id).first()
         if tenant:
+            occupied_rooms += 1
             contracts = Contract.query.filter_by(tenant_id=tenant.id).all()
             for contract in contracts:
                 bills = Bill.query.filter(
@@ -164,8 +163,11 @@ def dashboard():
                     total_due += bill.total
                     if bill.paid:
                         total_paid += bill.total
-                    elif datetime.now().date() > bill.month.replace(day=28) + timedelta(days=4):  # Quá hạn sau tháng
+                    # Quá hạn nếu qua ngày 5 tháng sau
+                    due_date = bill.month.replace(day=28) + timedelta(days=8)  # khoảng ngày 5 tháng sau
+                    if datetime.now().date() > due_date:
                         overdue_bills += 1
+        # Nếu phòng trống thì không tính gì thêm
     
     return render_template(
         'dashboard.html', 
