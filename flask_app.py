@@ -140,7 +140,16 @@ def register():
 @login_required
 def dashboard():
     rooms = Room.query.filter_by(user_id=current_user.id).all() if current_user.role != 'admin' else Room.query.all()
-    
+    # === THÊM ĐOẠN NÀY ĐỂ HIỂN THỊ ĐÚNG TÊN KHÁCH TRONG DANH SÁCH ===
+    for room in rooms:
+        active_tenant = Tenant.query.join(Contract).filter(
+            Tenant.room_id == room.id,
+            Contract.end_date >= datetime.now().date()
+        ).first()
+        if not active_tenant:
+            active_tenant = Tenant.query.filter_by(room_id=room.id).order_by(Tenant.id.desc()).first()
+        room.tenant = active_tenant
+    # ============================================================
     # Tính tổng quan
     total_rooms = len(rooms)
     occupied_rooms = 0
@@ -168,6 +177,8 @@ def dashboard():
                     if datetime.now().date() > due_date:
                         overdue_bills += 1
         # Nếu phòng trống thì không tính gì thêm
+    
+    total_unpaid = total_due - total_paid
     
     return render_template(
         'dashboard.html', 
