@@ -149,9 +149,12 @@ def register():
 @login_required
 def manage_users():
     if current_user.role != 'admin':
-        flash('Chỉ admin mới được truy cập', 'danger')
+        flash('Chỉ admin mới được truy cập trang này', 'danger')
         return redirect(url_for('dashboard'))
+    
+    # Lấy tất cả user
     users = User.query.all()
+    
     return render_template('manage_users.html', users=users)
 
 @app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
@@ -160,8 +163,9 @@ def edit_user(user_id):
     if current_user.role != 'admin':
         flash('Chỉ admin mới được chỉnh sửa', 'danger')
         return redirect(url_for('dashboard'))
+    
     user = User.query.get_or_404(user_id)
-    tenants = Tenant.query.all()
+    tenants = Tenant.query.all()  # Để chọn gán khách thuê
     
     if request.method == 'POST':
         user.username = request.form['username']
@@ -181,13 +185,18 @@ def delete_user(user_id):
     if current_user.role != 'admin':
         flash('Chỉ admin mới được xóa', 'danger')
         return redirect(url_for('dashboard'))
+    
     user = User.query.get_or_404(user_id)
+    if user.id == current_user.id:
+        flash('Không thể xóa chính tài khoản đang đăng nhập', 'danger')
+        return redirect(url_for('manage_users'))
     if user.role == 'admin' and User.query.filter_by(role='admin').count() == 1:
         flash('Không thể xóa admin cuối cùng', 'danger')
         return redirect(url_for('manage_users'))
+    
     db.session.delete(user)
     db.session.commit()
-    flash('Người dùng đã được xóa', 'success')
+    flash('Người dùng đã được xóa thành công', 'success')
     return redirect(url_for('manage_users'))
 
 @app.route('/')
