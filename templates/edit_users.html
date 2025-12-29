@@ -13,11 +13,30 @@
     </div>
     <div class="mb-3">
         <label>Vai trò</label>
-        <select name="role" class="form-select">
+        <select name="role" class="form-select" id="role-select">
             <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
             <option value="user" {% if user.role == 'user' %}selected{% endif %}>Chủ trọ</option>
             <option value="tenant" {% if user.role == 'tenant' %}selected{% endif %}>Khách thuê</option>
         </select>
+
+    <div class="mb-3" id="tenant-select" style="{% if user.role == 'tenant' %}display:block{% else %}display:none{% endif %}">
+        <label>Gán cho khách thuê</label>
+        <select name="tenant_id" class="form-select">
+            <option value="">-- Không gán --</option>
+            {% for tenant in tenants %}
+            <option value="{{ tenant.id }}" {% if user.tenant_id == tenant.id %}selected{% endif %}>
+                {{ tenant.name }} (Phòng {{ Room.query.get(tenant.room_id).name }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <script>
+        document.getElementById('role-select').addEventListener('change', function() {
+            document.getElementById('tenant-select').style.display = this.value === 'tenant' ? 'block' : 'none';
+        });
+    </script>
+        
     </div>
     <button type="submit" class="btn btn-warning">Cập nhật</button>
     <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">Quay lại</a>
