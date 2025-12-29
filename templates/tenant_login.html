@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Đăng nhập khách thuê{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white text-center">
+                    <h3>Đăng nhập khách thuê</h3>
+                    <p class="mb-0">Xem hóa đơn tiền phòng</p>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Tên đăng nhập</label>
+                            <input type="text" name="username" class="form-control" placeholder="Do chủ trọ cung cấp" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mật khẩu <small class="text-muted">(nếu có)</small></label>
+                            <input type="password" name="password" class="form-control" placeholder="Để trống nếu chưa đặt">
+                        </div>
+                        <button type="submit" class="btn btn-info w-100">Đăng nhập</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('login') }}">Đăng nhập chủ trọ/admin</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
