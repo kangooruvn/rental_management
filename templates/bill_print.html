@@ -30,21 +30,42 @@
 
     <table>
         <tr><th>Mục</th><th>Chi tiết</th><th>Thành tiền (VNĐ)</th></tr>
-        <tr><td>Tiền thuê phòng</td><td>1 tháng</td><td>{{ "{:,.0f}".format(room.rent_price) }}</td></tr>
-        <tr><td>Phí Internet</td><td>Cố định</td><td>{{ "{:,.0f}".format(room.internet_fee) }}</td></tr>
+        <tr>
+            <td>Tiền thuê phòng</td>
+            <td>1 tháng</td>
+            <td>{{ "{:,.0f}".format(room.rent_price) }}</td>
+        </tr>
+        <tr>
+            <td>Phí Internet</td>
+            <td>Cố định</td>
+            <td>{{ "{:,.0f}".format(room.internet_fee) }}</td>
+        </tr>
         <tr>
             <td>Tiền điện</td>
-            <td>Chỉ số cũ: {{ "{:.1f}".format(bill.electricity_old) }} kWh<br>Chỉ số mới: {{ "{:.1f}".format(bill.electricity_new) }} kWh<br>Số dùng: {{ "{:.1f}".format(bill.electricity_usage) }} kWh × {{ "{:,.0f}".format(bill.electricity_price) }} đ/kWh</td>
-            <td>{{ "{:,.0f}".format(electricity_cost) }}</td>
+            <td>
+                Chỉ số cũ: {{ "%.1f" % bill.electricity_old }} kWh<br>
+                Chỉ số mới: {{ "%.1f" % bill.electricity_new }} kWh<br>
+                Số dùng: {{ "%.1f" % bill.electricity_usage }} kWh × {{ "{:,.0f}".format(bill.electricity_price) }} đ/kWh
+            </td>
+            <td>{{ "{:,.0f}".format(bill.electricity_usage * bill.electricity_price) }}</td>
         </tr>
         <tr>
             <td>Tiền nước</td>
-            <td>Chỉ số cũ: {{ "{:.4f}".format(bill.water_old) }} m³<br>Chỉ số mới: {{ "{:.4f}".format(bill.water_new) }} m³<br>Số dùng: {{ "{:.4f}".format(bill.water_usage) }} m³ (bậc thang: 5 khối đầu 16.000 đ, tiếp theo 27.000 đ)</td>
+            <td>
+                Chỉ số cũ: {{ "%.4f" % bill.water_old }} m³<br>
+                Chỉ số mới: {{ "%.4f" % bill.water_new }} m³<br>
+                Số dùng: {{ "%.4f" % bill.water_usage }} m³ (bậc thang: 5 khối đầu 16.000 đ, tiếp theo 27.000 đ)
+            </td>
             <td>{{ "{:,.0f}".format(water_cost) }}</td>
         </tr>
     </table>
 
-    <p><strong>Chi tiết tiền nước:</strong><br>{{ water_detail | safe }}</p>
+    <!-- Thêm phần chi tiết tiền điện nước trước tổng -->
+    <div style="margin-top: 20px; font-size: 1.1em;">
+        <p><strong>Tiền điện:</strong> {{ "{:,.0f}".format(bill.electricity_usage * bill.electricity_price) }} đ</p>
+        <p><strong>Tiền nước:</strong> {{ "{:,.0f}".format(water_cost) }} đ</p>
+        <p><strong>Tiền thuê phòng + Internet:</strong> {{ "{:,.0f}".format(room.rent_price + room.internet_fee) }} đ</p>
+    </div>
 
     <div class="total">
         TỔNG TIỀN: <span style="color: red; font-size: 1.8em;">{{ "{:,.0f}".format(bill.total) }} VNĐ</span>
@@ -58,10 +79,5 @@
     <div class="no-print" style="text-align: center; margin-top: 40px;">
         <button onclick="window.print()" style="padding: 10px 20px; font-size: 18px;">🖨️ In hóa đơn (Ctrl+P)</button>
     </div>
-
-    <script>
-        // Tự động mở hộp thoại in khi load trang (tùy chọn)
-        // window.onload = function() { window.print(); }
-    </script>
 </body>
 </html>
