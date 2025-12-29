@@ -152,10 +152,10 @@ def manage_users():
         flash('Chỉ admin mới được truy cập trang này', 'danger')
         return redirect(url_for('dashboard'))
     
-    # Lấy tất cả user
     users = User.query.all()
+    total_admins = User.query.filter_by(role='admin').count()
     
-    return render_template('manage_users.html', users=users)
+    return render_template('manage_users.html', users=users, total_admins=total_admins)
 
 @app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
