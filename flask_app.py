@@ -55,20 +55,20 @@ class Contract(db.Model):
 class Bill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
-    month = db.Column(db.Date, nullable=False)  # First day of the month
+    month = db.Column(db.Date, nullable=False)
     
-    # Thêm fields mới cho chỉ số điện
-    electricity_old = db.Column(db.Float, default=0.0)  # Chỉ số cũ điện (1 thập phân)
-    electricity_new = db.Column(db.Float, default=0.0)  # Chỉ số mới điện (1 thập phân)
-    electricity_price = db.Column(db.Float, nullable=False, default=4000.0)  # Đơn giá điện (linh hoạt, mặc định 4000)
+    # Các cột mới cho điện
+    electricity_old = db.Column(db.Float, default=0.0)
+    electricity_new = db.Column(db.Float, default=0.0)
+    electricity_price = db.Column(db.Float, nullable=False, default=4000.0)
     
-    # Thêm fields mới cho chỉ số nước
-    water_old = db.Column(db.Float, default=0.0)  # Chỉ số cũ nước (4 thập phân)
-    water_new = db.Column(db.Float, default=0.0)  # Chỉ số mới nước (4 thập phân)
+    # Các cột mới cho nước
+    water_old = db.Column(db.Float, default=0.0)
+    water_new = db.Column(db.Float, default=0.0)
     
-    # Giữ fields cũ, nhưng giờ usage và total sẽ tính tự động
-    electricity_usage = db.Column(db.Float, default=0.0)  # Số điện dùng (tự tính)
-    water_usage = db.Column(db.Float, default=0.0)  # Số nước dùng (tự tính)
+    # Các cột cũ (tính tự động)
+    electricity_usage = db.Column(db.Float, default=0.0)
+    water_usage = db.Column(db.Float, default=0.0)
     total = db.Column(db.Float, nullable=False)
     paid = db.Column(db.Boolean, default=False)
 
