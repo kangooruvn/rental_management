@@ -540,6 +540,52 @@ def delete_bill(bill_id):
     flash('Hóa đơn đã được xóa', 'success')
     return redirect(url_for('contract_detail', contract_id=contract.id))
 
+@app.route('/tenant_login', methods=['GET', 'POST'])
+def tenant_login():
+    if current_user.is_authenticated:
+        return redirect(url_for('tenant_dashboard' if current_user.role == 'tenant' else 'dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form.get('password', '')  # Mật khẩu có thể để trống nếu không đặt
+        
+        user = User.query.filter_by(username=username, role='tenant').first()
+        if user and (not user.password or check_password_hash(user.password, password)):
+            login_user(user)
+            return redirect(url_for('tenant_dashboard'))
+        flash('Tên đăng nhập hoặc mật khẩu sai', 'danger')
+    
+    return render_template('tenant_login.html')
+
+@app.route('/tenant_dashboard')
+@login_required
+def tenant_dashboard():
+    if current_user.role != 'tenant' or not current_user.tenant_id:
+        flash('Truy cập không hợp lệ', 'danger')
+        logout_user()
+        return redirect(url_for('tenant_login'))
+    
+    tenant = Tenant.query.get(current_user.tenant_id)
+    if not tenant:
+        flash('Không tìm thấy thông tin phòng', 'danger')
+        logout_user()
+        return redirect(url_for('tenant_login'))
+    
+    room = Room.query.get(tenant.room_id)
+    contracts = Contract.query.filter_by(tenant_id=tenant.id).all()
+    bills = []
+    for contract in contracts:
+        bills.extend(Bill.query.filter_by(contract_id=contract.id).order_by(Bill.month.desc()).all())
+    
+    return render_template('tenant_dashboard.html', tenant=tenant, room=room, bills=bills)
+
+@app.route('/tenant_logout')
+@login_required
+def tenant_logout():
+    logout_user()
+    flash('Bạn đã đăng xuất', 'info')
+    return redirect(url_for('tenant_login'))
+    
 # Initialize DB and create default admin
 if __name__ == '__main__':
     with app.app_context():
