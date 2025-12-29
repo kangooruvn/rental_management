@@ -152,7 +152,7 @@ def dashboard():
     overdue_bills = 0
     
     for room in rooms:
-        tenant = Tenant.query.filter_by(room_id=room.id).first()
+        room.tenant = Tenant.query.filter_by(room_id=room.id).first()
         if tenant:
             contracts = Contract.query.filter_by(tenant_id=tenant.id).all()
             for contract in contracts:
