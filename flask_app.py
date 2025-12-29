@@ -53,7 +53,6 @@ class Contract(db.Model):
     is_extended = db.Column(db.Boolean, default=False)
 
 class Bill(db.Model):
-    class Bill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
     month = db.Column(db.Date, nullable=False)  # First day of the month
