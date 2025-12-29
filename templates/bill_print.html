@@ -32,8 +32,16 @@
         <tr><th>Mục</th><th>Chi tiết</th><th>Thành tiền (VNĐ)</th></tr>
         <tr><td>Tiền thuê phòng</td><td>1 tháng</td><td>{{ "{:,.0f}".format(room.rent_price) }}</td></tr>
         <tr><td>Phí Internet</td><td>Cố định</td><td>{{ "{:,.0f}".format(room.internet_fee) }}</td></tr>
-        <tr><td>Tiền điện</td><td>{{ bill.electricity_usage }} kWh × 4.000 đ</td><td>{{ "{:,.0f}".format(electricity_cost) }}</td></tr>
-        <tr><td>Tiền nước</td><td>{{ bill.water_usage }} m³ (bậc thang)</td><td>{{ "{:,.0f}".format(water_cost) }}</td></tr>
+        <tr>
+            <td>Tiền điện</td>
+            <td>Chỉ số cũ: {{ "{:.1f}".format(bill.electricity_old) }} kWh<br>Chỉ số mới: {{ "{:.1f}".format(bill.electricity_new) }} kWh<br>Số dùng: {{ "{:.1f}".format(bill.electricity_usage) }} kWh × {{ "{:,.0f}".format(bill.electricity_price) }} đ/kWh</td>
+            <td>{{ "{:,.0f}".format(electricity_cost) }}</td>
+        </tr>
+        <tr>
+            <td>Tiền nước</td>
+            <td>Chỉ số cũ: {{ "{:.4f}".format(bill.water_old) }} m³<br>Chỉ số mới: {{ "{:.4f}".format(bill.water_new) }} m³<br>Số dùng: {{ "{:.4f}".format(bill.water_usage) }} m³ (bậc thang: 5 khối đầu 16.000 đ, tiếp theo 27.000 đ)</td>
+            <td>{{ "{:,.0f}".format(water_cost) }}</td>
+        </tr>
     </table>
 
     <p><strong>Chi tiết tiền nước:</strong><br>{{ water_detail | safe }}</p>
@@ -43,7 +51,7 @@
     </div>
 
     <div class="footer">
-        <p>Ngày in: {{ now().strftime('%d/%m/%Y %H:%M') }}</p>
+        <p>Ngày in: {{ datetime.now().strftime('%d/%m/%Y %H:%M') }}</p>
         <p>Xin cảm ơn quý khách!</p>
     </div>
 
