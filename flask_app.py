@@ -28,8 +28,10 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
-    role = db.Column(db.String(50), nullable=False)  # 'admin' or 'user'
-
+    role = db.Column(db.String(50), nullable=False)  # 'admin', 'user', 'tenant'
+    
+    # Thêm trường gán với khách thuê (chỉ dùng khi role = 'tenant')
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=True)
 class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -125,17 +127,24 @@ def register():
     if current_user.role != 'admin':
         flash('Chỉ admin mới được tạo người dùng', 'danger')
         return redirect(url_for('dashboard'))
+    
+    tenants = Tenant.query.all()  # Lấy danh sách khách để chọn
+    
     if request.method == 'POST':
         username = request.form['username']
         password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
-        role = request.form['role']  # admin, user, tenant
-        new_user = User(username=username, password=password, role=role)
+        role = request.form['role']
+        
+        tenant_id = request.form.get('tenant_id') if role == 'tenant' else None
+        
+        new_user = User(username=username, password=password, role=role, tenant_id=tenant_id)
         db.session.add(new_user)
         db.session.commit()
         flash('Người dùng đã được tạo thành công!', 'success')
         return redirect(url_for('manage_users'))
-    return render_template('register.html')
-
+    
+    return render_template('register.html', tenants=tenants)
+    
 @app.route('/manage_users')
 @login_required
 def manage_users():
@@ -152,15 +161,19 @@ def edit_user(user_id):
         flash('Chỉ admin mới được chỉnh sửa', 'danger')
         return redirect(url_for('dashboard'))
     user = User.query.get_or_404(user_id)
+    tenants = Tenant.query.all()
+    
     if request.method == 'POST':
         user.username = request.form['username']
         if request.form['password']:
             user.password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
         user.role = request.form['role']
+        user.tenant_id = request.form.get('tenant_id') if user.role == 'tenant' else None
         db.session.commit()
         flash('Người dùng đã được cập nhật!', 'success')
         return redirect(url_for('manage_users'))
-    return render_template('edit_user.html', user=user)
+    
+    return render_template('edit_user.html', user=user, tenants=tenants)
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
