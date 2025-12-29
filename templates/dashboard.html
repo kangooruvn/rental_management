@@ -77,10 +77,9 @@
                     <strong>Tiền thuê:</strong> {{ "{:,.0f}".format(room.rent_price) }} đ/tháng<br>
                     <strong>Internet:</strong> {{ "{:,.0f}".format(room.internet_fee) }} đ/tháng
                 </p>
-                {% set tenant = Tenant.query.filter_by(room_id=room.id).first() %}
-                {% if tenant %}
+                {% if room.tenant %}
                     <span class="badge bg-success mb-2">Đang cho thuê</span><br>
-                    <small>Khách: {{ tenant.name }}</small>
+                    <small>Khách: {{ room.tenant.name }}</small>
                 {% else %}
                     <span class="badge bg-secondary">Trống</span>
                 {% endif %}
@@ -98,4 +97,5 @@
     </div>
     {% endfor %}
 </div>
+
 {% endblock %}
