@@ -123,18 +123,59 @@ def logout():
 @login_required
 def register():
     if current_user.role != 'admin':
-        flash('Access denied')
+        flash('Chỉ admin mới được tạo người dùng', 'danger')
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
         username = request.form['username']
         password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
-        role = request.form['role']
+        role = request.form['role']  # admin, user, tenant
         new_user = User(username=username, password=password, role=role)
         db.session.add(new_user)
         db.session.commit()
-        flash('User registered')
-        return redirect(url_for('dashboard'))
+        flash('Người dùng đã được tạo thành công!', 'success')
+        return redirect(url_for('manage_users'))
     return render_template('register.html')
+
+@app.route('/manage_users')
+@login_required
+def manage_users():
+    if current_user.role != 'admin':
+        flash('Chỉ admin mới được truy cập', 'danger')
+        return redirect(url_for('dashboard'))
+    users = User.query.all()
+    return render_template('manage_users.html', users=users)
+
+@app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    if current_user.role != 'admin':
+        flash('Chỉ admin mới được chỉnh sửa', 'danger')
+        return redirect(url_for('dashboard'))
+    user = User.query.get_or_404(user_id)
+    if request.method == 'POST':
+        user.username = request.form['username']
+        if request.form['password']:
+            user.password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
+        user.role = request.form['role']
+        db.session.commit()
+        flash('Người dùng đã được cập nhật!', 'success')
+        return redirect(url_for('manage_users'))
+    return render_template('edit_user.html', user=user)
+
+@app.route('/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if current_user.role != 'admin':
+        flash('Chỉ admin mới được xóa', 'danger')
+        return redirect(url_for('dashboard'))
+    user = User.query.get_or_404(user_id)
+    if user.role == 'admin' and User.query.filter_by(role='admin').count() == 1:
+        flash('Không thể xóa admin cuối cùng', 'danger')
+        return redirect(url_for('manage_users'))
+    db.session.delete(user)
+    db.session.commit()
+    flash('Người dùng đã được xóa', 'success')
+    return redirect(url_for('manage_users'))
 
 @app.route('/')
 @login_required
