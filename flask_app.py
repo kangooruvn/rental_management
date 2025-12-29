@@ -57,16 +57,16 @@ class Bill(db.Model):
     contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
     month = db.Column(db.Date, nullable=False)
     
-    # Các cột mới cho điện
+    # Chỉ số điện
     electricity_old = db.Column(db.Float, default=0.0)
     electricity_new = db.Column(db.Float, default=0.0)
     electricity_price = db.Column(db.Float, nullable=False, default=4000.0)
     
-    # Các cột mới cho nước
+    # Chỉ số nước
     water_old = db.Column(db.Float, default=0.0)
     water_new = db.Column(db.Float, default=0.0)
     
-    # Các cột cũ (tính tự động)
+    # Tính tự động
     electricity_usage = db.Column(db.Float, default=0.0)
     water_usage = db.Column(db.Float, default=0.0)
     total = db.Column(db.Float, nullable=False)
