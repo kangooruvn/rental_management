@@ -20,13 +20,28 @@
                         <input type="password" name="password" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Vai trò</label>
-                        <select name="role" class="form-select">
-                            <option value="admin">Admin (quản lý toàn bộ)</option>
-                            <option value="user">Chủ trọ (quản lý phòng của mình)</option>
-                            <option value="tenant">Khách thuê (chỉ xem hóa đơn phòng mình)</option>
+                        <label>Vai trò</label>
+                        <select name="role" class="form-select" id="role-select">
+                            <option value="admin">Admin</option>
+                            <option value="user">Chủ trọ</option>
+                            <option value="tenant">Khách thuê</option>
                         </select>
                     </div>
+                    <div class="mb-3" id="tenant-select" style="display: none;">
+                        <label>Gán cho khách thuê</label>
+                        <select name="tenant_id" class="form-select">
+                            <option value="">-- Chọn khách thuê --</option>
+                            {% for tenant in tenants %}
+                            <option value="{{ tenant.id }}">{{ tenant.name }} (Phòng {{ Room.query.get(tenant.room_id).name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <script>
+                        document.getElementById('role-select').addEventListener('change', function() {
+                            document.getElementById('tenant-select').style.display = this.value === 'tenant' ? 'block' : 'none';
+                        });
+                    </script>
                     <button type="submit" class="btn btn-dark">Tạo tài khoản</button>
                     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Quay lại</a>
                 </form>
