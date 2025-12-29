@@ -165,19 +165,37 @@ def edit_user(user_id):
         return redirect(url_for('dashboard'))
     
     user = User.query.get_or_404(user_id)
-    tenants = Tenant.query.all()  # Để chọn gán khách thuê
     
     if request.method == 'POST':
-        user.username = request.form['username']
-        if request.form['password']:
-            user.password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
-        user.role = request.form['role']
-        user.tenant_id = request.form.get('tenant_id') if user.role == 'tenant' else None
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        role = request.form.get('role')
+        
+        # Kiểm tra username không trùng với user khác
+        if username and username != user.username:
+            existing = User.query.filter_by(username=username).first()
+            if existing:
+                flash('Tên đăng nhập đã được sử dụng', 'danger')
+                return render_template('edit_user.html', user=user)
+        
+        user.username = username or user.username
+        
+        # Chỉ cập nhật password nếu người dùng nhập mới
+        if password:
+            user.password = generate_password_hash(password, method='pbkdf2:sha256')
+        
+        # Chỉ admin mới được thay đổi role của chính mình
+        if role and role in ['admin', 'user', 'tenant']:
+            if user.role == 'admin' and current_user.id == user.id and role != 'admin':
+                flash('Không thể tự hạ quyền admin của chính mình', 'danger')
+            else:
+                user.role = role
+        
         db.session.commit()
-        flash('Người dùng đã được cập nhật!', 'success')
+        flash('Người dùng đã được cập nhật thành công!', 'success')
         return redirect(url_for('manage_users'))
     
-    return render_template('edit_user.html', user=user, tenants=tenants)
+    return render_template('edit_user.html', user=user)
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
