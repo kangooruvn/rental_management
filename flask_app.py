@@ -294,6 +294,9 @@ def create_bill(contract_id):
     if current_user.role != 'admin' and room.user_id != current_user.id:
         flash('Access denied')
         return redirect(url_for('dashboard'))
+
+#   # Tìm hóa đơn mới nhất của hợp đồng này để gợi ý chỉ số cũ
+    last_bill = Bill.query.filter_by(contract_id=contract_id).order_by(Bill.month.desc()).first()
     
     if request.method == 'POST':
         month_str = request.form['month'] + '-01'
@@ -324,7 +327,7 @@ def create_bill(contract_id):
         flash('Hóa đơn đã được tạo thành công!')
         return redirect(url_for('contract_detail', contract_id=contract_id))
     
-    return render_template('create_bill.html', contract=contract, tenant=tenant, room=room)
+    return render_template('create_bill.html', contract=contract, tenant=tenant, room=room, last_bill=last_bill)
 
 @app.route('/pay_bill/<int:bill_id>', methods=['POST'])
 @login_required
