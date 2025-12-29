@@ -59,9 +59,14 @@
                 <td>{{ "%.4f" % bill.water_old }}</td>
                 <td>{{ "%.4f" % bill.water_new }}</td>
                 <td>{{ "%.4f" % bill.water_usage }}</td>
-                <!-- Tính tiền nước bậc thang thủ công trong template -->
-                {% set water_cost = (5 * 16000) + ((bill.water_usage - 5) * 27000) if bill.water_usage > 5 else (bill.water_usage * 16000) %}
-                <td>{{ "{:,.0f}".format(water_cost) }}</td>
+                <!-- Tính tiền nước bậc thang an toàn bằng if-else Jinja chuẩn -->
+                <td>
+                    {% if bill.water_usage > 5 %}
+                        {{ "{:,.0f}".format(5 * 16000 + (bill.water_usage - 5) * 27000) }}
+                    {% else %}
+                        {{ "{:,.0f}".format(bill.water_usage * 16000) }}
+                    {% endif %}
+                </td>
                 <td class="fw-bold">{{ "{:,.0f}".format(bill.total) }}</td>
                 <td>
                     {% if bill.paid %}
