@@ -30,7 +30,7 @@
 </div>
 
 <h4>Danh sách hóa đơn</h4>
-<div class="table-responsive">  <!-- Để responsive trên mobile -->
+<div class="table-responsive">
     <table class="table table-striped table-hover">
         <thead class="table-dark">
             <tr>
@@ -59,7 +59,9 @@
                 <td>{{ "%.4f" % bill.water_old }}</td>
                 <td>{{ "%.4f" % bill.water_new }}</td>
                 <td>{{ "%.4f" % bill.water_usage }}</td>
-                <td>{{ "{:,.0f}".format(calculate_water_cost(bill.water_usage)) }}</td>
+                <!-- Tính tiền nước bậc thang thủ công trong template -->
+                {% set water_cost = (5 * 16000) + ((bill.water_usage - 5) * 27000) if bill.water_usage > 5 else (bill.water_usage * 16000) %}
+                <td>{{ "{:,.0f}".format(water_cost) }}</td>
                 <td class="fw-bold">{{ "{:,.0f}".format(bill.total) }}</td>
                 <td>
                     {% if bill.paid %}
