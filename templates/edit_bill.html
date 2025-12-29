@@ -16,13 +16,29 @@
                         <label class="form-label">Tháng hóa đơn</label>
                         <input type="month" name="month" value="{{ bill.month.strftime('%Y-%m') }}" class="form-control" required>
                     </div>
+                    <hr class="my-4">
+                    <h5>Điện</h5>
                     <div class="mb-3">
-                        <label class="form-label">Số điện tiêu thụ (kWh)</label>
-                        <input type="number" step="0.01" name="electricity_usage" value="{{ bill.electricity_usage }}" class="form-control" required>
+                        <label class="form-label">Chỉ số cũ (kWh, đến 1 thập phân)</label>
+                        <input type="number" step="0.1" name="electricity_old" value="{{ bill.electricity_old }}" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Số nước tiêu thụ (m³)</label>
-                        <input type="number" step="0.01" name="water_usage" value="{{ bill.water_usage }}" class="form-control" required>
+                        <label class="form-label">Chỉ số mới (kWh, đến 1 thập phân)</label>
+                        <input type="number" step="0.1" name="electricity_new" value="{{ bill.electricity_new }}" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Đơn giá (đ/kWh)</label>
+                        <input type="number" step="0.01" name="electricity_price" value="{{ bill.electricity_price }}" class="form-control" required>
+                    </div>
+                    <hr class="my-4">
+                    <h5>Nước</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Chỉ số cũ (m³, đến 4 thập phân)</label>
+                        <input type="number" step="0.0001" name="water_old" value="{{ bill.water_old }}" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Chỉ số mới (m³, đến 4 thập phân)</label>
+                        <input type="number" step="0.0001" name="water_new" value="{{ bill.water_new }}" class="form-control" required>
                     </div>
                     <button type="submit" class="btn btn-warning">Cập nhật hóa đơn</button>
                     <a href="{{ url_for('contract_detail', contract_id=contract.id) }}" class="btn btn-secondary">Quay lại</a>
