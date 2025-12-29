@@ -140,7 +140,43 @@ def register():
 @login_required
 def dashboard():
     rooms = Room.query.filter_by(user_id=current_user.id).all() if current_user.role != 'admin' else Room.query.all()
-    return render_template('dashboard.html', rooms=rooms)
+    
+    # Tính tổng quan
+    total_rooms = len(rooms)
+    occupied_rooms = sum(1 for room in rooms if Tenant.query.filter_by(room_id=room.id).first())
+    
+    # Tổng tiền phải thu tháng hiện tại
+    current_month = datetime.now().replace(day=1)
+    total_due = 0
+    total_paid = 0
+    overdue_bills = 0
+    
+    for room in rooms:
+        tenant = Tenant.query.filter_by(room_id=room.id).first()
+        if tenant:
+            contracts = Contract.query.filter_by(tenant_id=tenant.id).all()
+            for contract in contracts:
+                bills = Bill.query.filter(
+                    Bill.contract_id == contract.id,
+                    Bill.month >= current_month
+                ).all()
+                for bill in bills:
+                    total_due += bill.total
+                    if bill.paid:
+                        total_paid += bill.total
+                    elif datetime.now().date() > bill.month.replace(day=28) + timedelta(days=4):  # Quá hạn sau tháng
+                        overdue_bills += 1
+    
+    return render_template(
+        'dashboard.html', 
+        rooms=rooms,
+        total_rooms=total_rooms,
+        occupied_rooms=occupied_rooms,
+        total_due=total_due,
+        total_paid=total_paid,
+        total_unpaid=total_due - total_paid,
+        overdue_bills=overdue_bills
+    )
 
 @app.route('/create_room', methods=['GET', 'POST'])
 @login_required
