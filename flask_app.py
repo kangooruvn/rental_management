@@ -54,8 +54,8 @@ class Contract(db.Model):
 
 class Bill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-        contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
-        month = db.Column(db.Date, nullable=False)
+    contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
+    month = db.Column(db.Date, nullable=False)
     
     # Chỉ số điện
     electricity_old = db.Column(db.Float, default=0.0)
