@@ -23,6 +23,7 @@
                     </li>
                     {% if current_user.role == 'admin' %}
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('manage_users') }}">Quản lý người dùng</a>
                         <a class="nav-link" href="{{ url_for('register') }}">Thêm người dùng</a>
                     </li>
                     {% endif %}
