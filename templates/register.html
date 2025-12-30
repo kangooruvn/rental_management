@@ -1,50 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Thêm người dùng mới{% endblock %}
 {% block content %}
-<h2>Thêm người dùng mới (Chỉ Admin)</h2>
+<div class="container mt-4">
+    <h2>Thêm người dùng mới (Chỉ Admin)</h2>
 
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow">
-            <div class="card-header bg-dark text-white">
-                <h4>Thông tin tài khoản</h4>
-            </div>
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label class="form-label">Tên đăng nhập</label>
-                        <input type="text" name="username" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Mật khẩu</label>
-                        <input type="password" name="password" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label>Vai trò</label>
-                        <select name="role" class="form-select" id="role-select">
-                            <option value="admin">Admin</option>
-                            <option value="user">Chủ trọ</option>
-                            <option value="tenant">Khách thuê</option>
-                        </select>
-                    </div>
-                    <div class="mb-3" id="tenant-select" style="display: none;">
-                        <label>Gán cho khách thuê</label>
-                        <select name="tenant_id" class="form-select">
-                            <option value="">-- Chọn khách thuê --</option>
-                            {% for tenant in tenants %}
-                            <option value="{{ tenant.id }}">{{ tenant.name }} (Phòng {{ Room.query.get(tenant.room_id).name }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <script>
-                        document.getElementById('role-select').addEventListener('change', function() {
-                            document.getElementById('tenant-select').style.display = this.value === 'tenant' ? 'block' : 'none';
-                        });
-                    </script>
-                    <button type="submit" class="btn btn-dark">Tạo tài khoản</button>
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Quay lại</a>
-                </form>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <h4>Thông tin tài khoản</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
+                            <input type="text" name="username" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Vai trò <span class="text-danger">*</span></label>
+                            <select name="role" class="form-select" id="role-select">
+                                <option value="admin">Admin</option>
+                                <option value="user">Chủ trọ</option>
+                                <option value="tenant">Khách thuê</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="tenant-select" style="display: none;">
+                            <label class="form-label">Gán cho khách thuê <span class="text-danger">*</span></label>
+                            <select name="tenant_id" class="form-select">
+                                <option value="">-- Chọn khách thuê --</option>
+                                {% for tenant in tenants %}
+                                {% set room = Room.query.get(tenant.room_id) %}
+                                <option value="{{ tenant.id }}">
+                                    {{ tenant.name }} {% if room %}(Phòng {{ room.name }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <script>
+                            document.getElementById('role-select').addEventListener('change', function() {
+                                document.getElementById('tenant-select').style.display = 
+                                    this.value === 'tenant' ? 'block' : 'none';
+                            });
+                        </script>
+
+                        <button type="submit" class="btn btn-dark">Tạo tài khoản</button>
+                        <a href="{{ url_for('manage_users') }}" class="btn btn-secondary ms-2">Quay lại</a>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
