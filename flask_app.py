@@ -151,16 +151,22 @@ def register():
         
         # Nếu là tenant, gán tenant_id (liên kết với bảng Tenant)
         if role == 'tenant':
-            tenant_id = request.form.get('tenant_id')
-            if not tenant_id:
-                flash('Vui lòng chọn khách thuê', 'danger')
-                return render_template('register.html', tenants=tenants)
-            # Có thể thêm trường tenant_linked_id vào model User nếu cần
-            # Hiện tại mình gán username = tên khách để dễ nhận biết
-            tenant = Tenant.query.get(tenant_id)
-            if tenant:
-                new_user.username = tenant.name.lower().replace(' ', '') + tenant.id  # ví dụ: nguyenvan10
-                
+                    tenant_id = request.form.get('tenant_id')
+                    if not tenant_id:
+                        flash('Vui lòng chọn khách thuê', 'danger')
+                        return render_template('register.html', tenants=tenants)
+            
+                    tenant = Tenant.query.get(tenant_id)
+                    if not tenant:
+                        flash('Khách thuê không tồn tại', 'danger')
+                        return render_template('register.html', tenants=tenants)
+            
+                    # Tạo username tự động: tên khách (không dấu, không khoảng trắng) + id
+                    base_name = tenant.name.lower().replace(' ', '').replace('đ', 'd')
+                    new_user.username = f"{base_name}{tenant.id}"
+            
+                    # Nếu muốn username dễ đọc hơn, có thể dùng:
+                    # new_user.username = f"khach{tenant.id}"  # ví dụ: khach5                
         db.session.add(new_user)
         db.session.commit()
         flash('Người dùng đã được tạo thành công!', 'success')
