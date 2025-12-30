@@ -133,7 +133,7 @@ def register():
     for tenant in tenants:
         tenant.room = Room.query.get(tenant.room_id)
             
-    if request.method == 'POST':
+        if request.method == 'POST':
         username = request.form['username'].strip()
         password = request.form['password']
         role = request.form['role']
@@ -143,35 +143,30 @@ def register():
             flash('Tên đăng nhập đã tồn tại', 'danger')
             return render_template('register.html', tenants=tenants)
         
+        if not password:
+            flash('Vui lòng nhập mật khẩu', 'danger')
+            return render_template('register.html', tenants=tenants)
+        
         new_user = User(
             username=username,
             password=generate_password_hash(password, method='pbkdf2:sha256'),
             role=role
         )
         
-        # Nếu là tenant, gán tenant_id (liên kết với bảng Tenant)
+        # Nếu là khách thuê, gán tenant_id để liên kết với khách + phòng
         if role == 'tenant':
-                    tenant_id = request.form.get('tenant_id')
-                    if not tenant_id:
-                        flash('Vui lòng chọn khách thuê', 'danger')
-                        return render_template('register.html', tenants=tenants)
-            
-                    tenant = Tenant.query.get(tenant_id)
-                    if not tenant:
-                        flash('Khách thuê không tồn tại', 'danger')
-                        return render_template('register.html', tenants=tenants)
-            
-                    # Tạo username tự động: tên khách (không dấu, không khoảng trắng) + id
-                    base_name = tenant.name.lower().replace(' ', '').replace('đ', 'd')
-                    new_user.username = f"{base_name}{tenant.id}"
-            
-                    # Nếu muốn username dễ đọc hơn, có thể dùng:
-                    # new_user.username = f"khach{tenant.id}"  # ví dụ: khach5                
+            tenant_id = request.form.get('tenant_id')
+            if not tenant_id:
+                flash('Vui lòng chọn khách thuê để gán', 'danger')
+                return render_template('register.html', tenants=tenants)
+            # Thêm cột tenant_linked_id vào model User (xem Bước 3 nếu chưa có)
+            new_user.tenant_linked_id = int(tenant_id)
+        
         db.session.add(new_user)
         db.session.commit()
-        flash('Người dùng đã được tạo thành công!', 'success')
+        flash('Tài khoản đã được tạo thành công!', 'success')
         return redirect(url_for('manage_users'))
-    
+        
     return render_template('register.html', tenants=tenants)
     
 @app.route('/manage_users')
