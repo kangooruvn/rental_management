@@ -33,9 +33,8 @@
                             <select name="tenant_id" class="form-select">
                                 <option value="">-- Chọn khách thuê --</option>
                                 {% for tenant in tenants %}
-                                {% set room = Room.query.get(tenant.room_id) %}
                                 <option value="{{ tenant.id }}">
-                                    {{ tenant.name }} {% if room %}(Phòng {{ room.name }}){% endif %}
+                                    {{ tenant.name }} {% if tenant.room %} (Phòng {{ tenant.room.name }}) {% endif %}
                                 </option>
                                 {% endfor %}
                             </select>
