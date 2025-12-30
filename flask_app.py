@@ -130,7 +130,9 @@ def register():
     
     # Lấy danh sách tất cả khách thuê để gán (nếu role tenant)
     tenants = Tenant.query.all()
-    
+        for tenant in tenants:
+        tenant.room = Room.query.get(tenant.room_id)
+            
     if request.method == 'POST':
         username = request.form['username'].strip()
         password = request.form['password']
