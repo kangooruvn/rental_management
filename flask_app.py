@@ -128,16 +128,37 @@ def register():
         flash('Chỉ admin mới được tạo người dùng', 'danger')
         return redirect(url_for('dashboard'))
     
-    tenants = Tenant.query.all()  # Lấy danh sách khách để chọn
+    # Lấy danh sách tất cả khách thuê để gán (nếu role tenant)
+    tenants = Tenant.query.all()
     
     if request.method == 'POST':
-        username = request.form['username']
-        password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
+        username = request.form['username'].strip()
+        password = request.form['password']
         role = request.form['role']
         
-        tenant_id = request.form.get('tenant_id') if role == 'tenant' else None
+        # Kiểm tra username trùng
+        if User.query.filter_by(username=username).first():
+            flash('Tên đăng nhập đã tồn tại', 'danger')
+            return render_template('register.html', tenants=tenants)
         
-        new_user = User(username=username, password=password, role=role, tenant_id=tenant_id)
+        new_user = User(
+            username=username,
+            password=generate_password_hash(password, method='pbkdf2:sha256'),
+            role=role
+        )
+        
+        # Nếu là tenant, gán tenant_id (liên kết với bảng Tenant)
+        if role == 'tenant':
+            tenant_id = request.form.get('tenant_id')
+            if not tenant_id:
+                flash('Vui lòng chọn khách thuê', 'danger')
+                return render_template('register.html', tenants=tenants)
+            # Có thể thêm trường tenant_linked_id vào model User nếu cần
+            # Hiện tại mình gán username = tên khách để dễ nhận biết
+            tenant = Tenant.query.get(tenant_id)
+            if tenant:
+                new_user.username = tenant.name.lower().replace(' ', '') + tenant.id  # ví dụ: nguyenvan10
+                
         db.session.add(new_user)
         db.session.commit()
         flash('Người dùng đã được tạo thành công!', 'success')
