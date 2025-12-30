@@ -14,11 +14,11 @@
                     <form method="POST">
                         <div class="mb-3">
                             <label class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
-                            <input type="text" name="username" class="form-control" required>
+                            <input type="text" name="username" class="form-control" placeholder="Ví dụ: phong101, khachA" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
-                            <input type="password" name="password" class="form-control" required>
+                            <input type="password" name="password" class="form-control" placeholder="Mật khẩu dễ nhớ cho khách" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Vai trò <span class="text-danger">*</span></label>
@@ -33,9 +33,11 @@
                             <select name="tenant_id" class="form-select">
                                 <option value="">-- Chọn khách thuê --</option>
                                 {% for tenant in tenants %}
+                                {% if tenant.room %}
                                 <option value="{{ tenant.id }}">
-                                    {{ tenant.name }} {% if tenant.room %} (Phòng {{ tenant.room.name }}) {% endif %}
+                                    {{ tenant.name }} (Phòng {{ tenant.room.name }})
                                 </option>
+                                {% endif %}
                                 {% endfor %}
                             </select>
                         </div>
