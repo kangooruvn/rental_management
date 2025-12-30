@@ -176,7 +176,7 @@ def edit_user(user_id):
             existing = User.query.filter_by(username=username).first()
             if existing:
                 flash('Tên đăng nhập đã được sử dụng', 'danger')
-                return render_template('edit_user.html', user=user)
+                return render_template('edit_users.html', user=user)
         
         user.username = username or user.username
         
@@ -195,7 +195,7 @@ def edit_user(user_id):
         flash('Người dùng đã được cập nhật thành công!', 'success')
         return redirect(url_for('manage_users'))
     
-    return render_template('edit_user.html', user=user)
+    return render_template('edit_users.html', user=user)
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
