@@ -31,7 +31,7 @@ class User(db.Model, UserMixin):
     role = db.Column(db.String(50), nullable=False)  # 'admin', 'user', 'tenant'
     
     # Thêm trường gán với khách thuê (chỉ dùng khi role = 'tenant')
-    tenant_linked_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=True)
 class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
