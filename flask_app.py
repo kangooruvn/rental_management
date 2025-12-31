@@ -133,41 +133,40 @@ def register():
     for tenant in tenants:
         tenant.room = Room.query.get(tenant.room_id)
             
-        if request.method == 'POST':
-                username = request.form['username'].strip()
-                password = request.form['password']
-                role = request.form['role']
+            if request.method == 'POST':
+                    username = request.form['username'].strip()
+                    password = request.form['password']
+                    role = request.form['role']
         
-                # Kiểm tra username trùng
-                if User.query.filter_by(username=username).first():
-                    flash('Tên đăng nhập đã tồn tại', 'danger')
-                    return render_template('register.html', tenants=tenants)
-        
-                if not password:
-                    flash('Vui lòng nhập mật khẩu', 'danger')
-                    return render_template('register.html', tenants=tenants)
-        
-                new_user = User(
-                    username=username,
-                    password=generate_password_hash(password, method='pbkdf2:sha256'),
-                    role=role
-                )
-        
-                # Nếu là khách thuê, gán tenant_id để liên kết với khách + phòng
-                if role == 'tenant':
-                    tenant_id = request.form.get('tenant_id')
-                    if not tenant_id:
-                        flash('Vui lòng chọn khách thuê để gán', 'danger')
+                    # Kiểm tra username trùng
+                    if User.query.filter_by(username=username).first():
+                        flash('Tên đăng nhập đã tồn tại', 'danger')
                         return render_template('register.html', tenants=tenants)
-                    # Thêm cột tenant_linked_id vào model User (xem Bước 3 nếu chưa có)
-                    new_user.tenant_linked_id = int(tenant_id)
         
-                db.session.add(new_user)
-                db.session.commit()
-                flash('Tài khoản đã được tạo thành công!', 'success')
-                return redirect(url_for('manage_users'))
+                    if not password:
+                        flash('Vui lòng nhập mật khẩu', 'danger')
+                        return render_template('register.html', tenants=tenants)
         
-    return render_template('register.html', tenants=tenants)
+                    new_user = User(
+                        username=username,
+                        password=generate_password_hash(password, method='pbkdf2:sha256'),
+                        role=role
+                    )
+        
+                    # Nếu là khách thuê, gán tenant_id để liên kết với khách + phòng
+                    if role == 'tenant':
+                        tenant_id = request.form.get('tenant_id')
+                        if not tenant_id:
+                            flash('Vui lòng chọn khách thuê để gán', 'danger')
+                            return render_template('register.html', tenants=tenants)
+                        new_user.tenant_id = int(tenant_id)  # Dùng cột tenant_id đã có
+        
+                    db.session.add(new_user)
+                    db.session.commit()
+                    flash('Tài khoản khách thuê đã được tạo thành công!', 'success')
+                    return redirect(url_for('manage_users'))
+    
+                return render_template('register.html', tenants=tenants)
     
 @app.route('/manage_users')
 @login_required
