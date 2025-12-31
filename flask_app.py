@@ -169,18 +169,27 @@ def register():
         return redirect(url_for('manage_users'))
     
     return render_template('register.html', tenants=tenants)    
+
 @app.route('/manage_users')
 @login_required
 def manage_users():
     if current_user.role != 'admin':
-        flash('Chỉ admin mới được truy cập trang này', 'danger')
+        flash('Chỉ admin mới được truy cập', 'danger')
         return redirect(url_for('dashboard'))
     
     users = User.query.all()
+    
+    # Join tenant_linked cho user role tenant
+    for user in users:
+        if user.role == 'tenant' and user.tenant_id:
+            user.tenant_linked = Tenant.query.get(user.tenant_id)
+            if user.tenant_linked:
+                user.tenant_linked.room = Room.query.get(user.tenant_linked.room_id)
+    
     total_admins = User.query.filter_by(role='admin').count()
     
     return render_template('manage_users.html', users=users, total_admins=total_admins)
-
+    
 @app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def edit_user(user_id):
