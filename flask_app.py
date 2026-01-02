@@ -133,25 +133,24 @@ def calculate_bill(contract, electricity_old, electricity_new, water_old, water_
     electricity_usage = max(electricity_new - electricity_old, 0)
     water_usage = max(water_new - water_old, 0)
     
-    # Tiền nước
     water_cost = calculate_water_cost(water_usage)
     
-    # Tổng kWh toàn nhà tháng này (bao gồm cả phòng này)
-    total_month_kwh = get_total_electricity_usage_in_month(bill_month) + electricity_usage
+    # Lấy tổng kWh từ bảng TotalElectricityMonth (admin nhập từ công tơ)
+    month_entry = TotalElectricityMonth.query.filter_by(month=bill_month).first()
+    total_month_kwh = month_entry.total_kwh if month_entry else 0.0  # Nếu chưa nhập, dùng 0 (tiền = 0)
     
-    # Tổng tiền chung chưa VAT
+    # Tính tổng tiền chung chưa VAT
     total_month_cost_before_vat = calculate_total_electricity_cost_before_vat(total_month_kwh)
     
     # Đơn giá trung bình chưa VAT
-    average_price_before_vat = total_month_cost_before_vat / total_month_kwh if total_month_kwh > 0 else 0
+    average_price = total_month_cost_before_vat / total_month_kwh if total_month_kwh > 0 else 0
     
     # Tiền điện phòng chưa VAT
-    room_electricity_before_vat = electricity_usage * average_price_before_vat
+    room_electricity_before_vat = electricity_usage * average_price
     
     # Cộng VAT
     room_electricity_with_vat = room_electricity_before_vat * (1 + VAT_RATE)
     
-    # Tổng tiền
     total = room.rent_price + room.internet_fee + room_electricity_with_vat + water_cost
     
     return {
