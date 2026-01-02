@@ -51,6 +51,16 @@
                         <label class="form-label">Chỉ số mới (m³, đến 4 thập phân)</label>
                         <input type="number" step="0.0001" name="water_new" value="0.0000" class="form-control" required>
                     </div>
+                    <div class="mb-4 p-3 bg-light border rounded">
+                        <h5 class="text-primary">
+                            Đơn giá điện trung bình tháng {{ selected_month or 'hiện tại' }}:
+                            <strong>{{ "{:,.0f}".format(average_price_preview) }} đ/kWh</strong> (chưa VAT)
+                        </h5>
+                        <small class="text-muted">
+                            Tính tự động từ tổng điện toàn nhà theo bậc thang EVN.<br>
+                            VAT 8% sẽ được cộng vào tiền điện cuối cùng.
+                        </small>
+                    </div>
                     <button type="submit" class="btn btn-info text-white">Tạo hóa đơn</button>
                     <a href="{{ url_for('contract_detail', contract_id=contract.id) }}" class="btn btn-secondary">Quay lại</a>
                 </form>
@@ -59,6 +69,7 @@
     </div>
 </div>
 {% endblock %}
+
 
 
 
