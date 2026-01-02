@@ -659,24 +659,32 @@ def edit_bill(bill_id):
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
-        bill.month = datetime.strptime(request.form['month'] + '-01', '%Y-%m-%d').date()
+        month_str = request.form['month'] + '-01'
+        month = datetime.strptime(month_str, '%Y-%m-%d').date()
         
-        # Lấy chỉ số mới từ form
-        bill.electricity_old = float(request.form['electricity_old'])
-        bill.electricity_new = float(request.form['electricity_new'])
-        bill.water_old = float(request.form['water_old'])
-        bill.water_new = float(request.form['water_new'])
-        bill.electricity_price = float(request.form['electricity_price'])
+        electricity_old = float(request.form['electricity_old'])
+        electricity_new = float(request.form['electricity_new'])
+        water_old = float(request.form['water_old'])
+        water_new = float(request.form['water_new'])
         
-        # Tính lại tự động
-        bill.total, bill.electricity_usage, bill.water_usage, _, _ = calculate_bill(
-            contract, bill.electricity_old, bill.electricity_new, bill.water_old, bill.water_new, bill.electricity_price
-        )
+        # Tính lại toàn bộ theo bài toán mới
+        bill_data = calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, month)
+        
+        # Cập nhật bill
+        bill.month = month
+        bill.electricity_old = electricity_old
+        bill.electricity_new = electricity_new
+        bill.water_old = water_old
+        bill.water_new = water_new
+        bill.electricity_usage = bill_data['electricity_usage']
+        bill.water_usage = bill_data['water_usage']
+        bill.total = bill_data['total']
         
         db.session.commit()
-        flash('Hóa đơn đã được cập nhật!')
+        flash('Hóa đơn đã được cập nhật thành công!', 'success')
         return redirect(url_for('contract_detail', contract_id=contract.id))
     
+    # GET: hiển thị form sửa
     return render_template('edit_bill.html', bill=bill, tenant=tenant, room=room, contract=contract)
 
 # --- Xóa hóa đơn ---
