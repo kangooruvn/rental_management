@@ -27,8 +27,9 @@
                         <input type="number" step="0.1" name="electricity_new" value="{{ bill.electricity_new }}" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Đơn giá (đ/kWh)</label>
-                        <input type="number" step="0.01" name="electricity_price" value="{{ bill.electricity_price }}" class="form-control" required>
+                        <label class="form-label">Đơn giá điện trung bình tháng này (đ/kWh, chưa VAT)</label>
+                        <input type="text" value="{{ "%.0f" % average_price_before_vat|default(0) }}" class="form-control" readonly>
+                        <small class="text-muted">Tính tự động từ tổng điện toàn nhà theo bậc thang EVN</small>
                     </div>
                     <hr class="my-4">
                     <h5>Nước</h5>
@@ -48,3 +49,4 @@
     </div>
 </div>
 {% endblock %}
+
