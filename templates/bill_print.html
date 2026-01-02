@@ -28,44 +28,31 @@
     <p><strong>Phòng:</strong> {{ room.name }}</p>
     <p><strong>SĐT:</strong> {{ tenant.phone or 'Chưa có' }}</p>
 
-    <table>
+   <table>
         <tr><th>Mục</th><th>Chi tiết</th><th>Thành tiền (VNĐ)</th></tr>
+        <tr><td>Tiền thuê phòng</td><td>1 tháng</td><td>{{ "{:,.0f}".format(room.rent_price) }}</td></tr>
+        <tr><td>Phí Internet</td><td>Cố định</td><td>{{ "{:,.0f}".format(room.internet_fee) }}</td></tr>
         <tr>
-            <td>Tiền thuê phòng</td>
-            <td>1 tháng</td>
-            <td>{{ "{:,.0f}".format(room.rent_price) }}</td>
+            <td>Tiền điện (chưa VAT)</td>
+            <td>{{ "%.1f" % bill.electricity_usage }} kWh × {{ "{:,.0f}".format(bill.average_price_before_vat|default(0)) }} đ/kWh (trung bình toàn nhà)</td>
+            <td>{{ "{:,.0f}".format(bill.room_electricity_before_vat|default(0)) }}</td>
         </tr>
         <tr>
-            <td>Phí Internet</td>
-            <td>Cố định</td>
-            <td>{{ "{:,.0f}".format(room.internet_fee) }}</td>
+            <td>VAT điện (8%)</td>
+            <td></td>
+            <td>{{ "{:,.0f}".format(bill.electricity_vat|default(0)) }}</td>
         </tr>
         <tr>
-            <td>Tiền điện</td>
-            <td>
-                Chỉ số cũ: {{ "%.1f" % bill.electricity_old }} kWh<br>
-                Chỉ số mới: {{ "%.1f" % bill.electricity_new }} kWh<br>
-                Số dùng: {{ "%.1f" % bill.electricity_usage }} kWh × {{ "{:,.0f}".format(bill.electricity_price) }} đ/kWh
-            </td>
-            <td>{{ "{:,.0f}".format(bill.electricity_usage * bill.electricity_price) }}</td>
+            <td>Tiền điện (có VAT)</td>
+            <td></td>
+            <td class="fw-bold">{{ "{:,.0f}".format(bill.room_electricity_with_vat|default(0)) }}</td>
         </tr>
         <tr>
             <td>Tiền nước</td>
-            <td>
-                Chỉ số cũ: {{ "%.4f" % bill.water_old }} m³<br>
-                Chỉ số mới: {{ "%.4f" % bill.water_new }} m³<br>
-                Số dùng: {{ "%.4f" % bill.water_usage }} m³ (bậc thang: 5 khối đầu 16.000 đ, tiếp theo 27.000 đ)
-            </td>
-            <td>{{ "{:,.0f}".format(water_cost) }}</td>
+            <td>{{ "%.4f" % bill.water_usage }} m³ (bậc thang)</td>
+            <td>{{ "{:,.0f}".format(bill.water_cost|default(0)) }}</td>
         </tr>
     </table>
-
-    <!-- Thêm phần chi tiết tiền điện nước trước tổng -->
-    <div style="margin-top: 20px; font-size: 1.1em;">
-        <p><strong>Tiền điện:</strong> {{ "{:,.0f}".format(bill.electricity_usage * bill.electricity_price) }} đ</p>
-        <p><strong>Tiền nước:</strong> {{ "{:,.0f}".format(water_cost) }} đ</p>
-        <p><strong>Tiền thuê phòng + Internet:</strong> {{ "{:,.0f}".format(room.rent_price + room.internet_fee) }} đ</p>
-    </div>
 
     <div class="total">
         TỔNG TIỀN: <span style="color: red; font-size: 1.8em;">{{ "{:,.0f}".format(bill.total) }} VNĐ</span>
@@ -81,3 +68,4 @@
     </div>
 </body>
 </html>
+
