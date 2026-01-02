@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Quản lý tổng điện tháng{% endblock %}
+{% block content %}
+<h2>Quản lý tổng điện tháng (từ công tơ nhà)</h2>
+
+<!-- Form nhập tổng điện mới -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4>Nhập tổng chỉ số điện tháng mới</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Tháng (YYYY-MM)</label>
+                <input type="month" name="month" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Chỉ số tổng cũ (kWh)</label>
+                <input type="number" step="0.1" name="electricity_old" class="form-control" value="0.0" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Chỉ số tổng mới (kWh)</label>
+                <input type="number" step="0.1" name="electricity_new" class="form-control" value="0.0" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Lưu tổng điện tháng</button>
+        </form>
+    </div>
+</div>
+
+<!-- Bảng danh sách tháng đã nhập -->
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Tháng</th>
+                <th>Tổng kWh</th>
+                <th>Đơn giá TB (chưa VAT)</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in months %}
+            <tr>
+                <td>{{ entry.month.strftime('%m/%Y') }}</td>
+                <td>{{ "%.1f" % entry.total_kwh }}</td>
+                <td>{{ "{:,.0f}".format(entry.average_price) }}</td>
+                <td>
+                    <!-- Sửa hoặc xóa nếu cần -->
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4">Chưa có tháng nào. Nhập tháng đầu tiên!</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
