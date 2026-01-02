@@ -507,6 +507,12 @@ def create_bill(contract_id):
     
     last_bill = Bill.query.filter_by(contract_id=contract_id).order_by(Bill.month.desc()).first()
     
+    # THÊM DÒNG NÀY: Tính trước đơn giá trung bình để hiển thị trong form (nếu muốn)
+    preview_month = datetime.now().replace(day=1)  # Tháng hiện tại làm ví dụ
+    total_kwh_preview = get_total_electricity_usage_in_month(preview_month)
+    total_cost_preview = calculate_total_electricity_cost_before_vat(total_kwh_preview)
+    average_price_preview = total_cost_preview / total_kwh_preview if total_kwh_preview > 0 else 0
+    
     if request.method == 'POST':
         month_str = request.form['month'] + '-01'
         month = datetime.strptime(month_str, '%Y-%m-%d').date()
@@ -516,6 +522,7 @@ def create_bill(contract_id):
         water_old = float(request.form['water_old'])
         water_new = float(request.form['water_new'])
         
+        # SỬA DÒNG NÀY: Truyền thêm month vào hàm calculate_bill
         bill_data = calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, month)
         
         new_bill = Bill(
@@ -535,7 +542,15 @@ def create_bill(contract_id):
         flash('Hóa đơn đã được tạo thành công!', 'success')
         return redirect(url_for('contract_detail', contract_id=contract_id))
     
-    return render_template('create_bill.html', contract=contract, tenant=tenant, room=room, last_bill=last_bill)
+    # SỬA DÒNG NÀY: Truyền thêm average_price_preview vào template (nếu muốn hiển thị)
+    return render_template(
+        'create_bill.html', 
+        contract=contract, 
+        tenant=tenant, 
+        room=room, 
+        last_bill=last_bill,
+        average_price_preview=average_price_preview  # Thêm dòng này
+    )
     
 @app.route('/pay_bill/<int:bill_id>', methods=['POST'])
 @login_required
