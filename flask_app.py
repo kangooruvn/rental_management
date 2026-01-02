@@ -518,8 +518,9 @@ def create_bill(contract_id):
     
     last_bill = Bill.query.filter_by(contract_id=contract_id).order_by(Bill.month.desc()).first()
     
-    # THÊM DÒNG NÀY: Tính trước đơn giá trung bình để hiển thị trong form (nếu muốn)
-    preview_month = datetime.now().replace(day=1)  # Tháng hiện tại làm ví dụ
+    # Tính đơn giá trung bình dự kiến để hiển thị trên form
+    # Dùng tháng hiện tại làm mặc định
+    preview_month = datetime.now().replace(day=1)
     total_kwh_preview = get_total_electricity_usage_in_month(preview_month)
     total_cost_preview = calculate_total_electricity_cost_before_vat(total_kwh_preview)
     average_price_preview = total_cost_preview / total_kwh_preview if total_kwh_preview > 0 else 0
@@ -533,7 +534,6 @@ def create_bill(contract_id):
         water_old = float(request.form['water_old'])
         water_new = float(request.form['water_new'])
         
-        # SỬA DÒNG NÀY: Truyền thêm month vào hàm calculate_bill
         bill_data = calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, month)
         
         new_bill = Bill(
@@ -553,30 +553,15 @@ def create_bill(contract_id):
         flash('Hóa đơn đã được tạo thành công!', 'success')
         return redirect(url_for('contract_detail', contract_id=contract_id))
     
-    # SỬA DÒNG NÀY: Truyền thêm average_price_preview vào template (nếu muốn hiển thị)
-    # Tính đơn giá trung bình dự kiến cho tháng được chọn (nếu có), hoặc tháng hiện tại
-        selected_month = None
-        average_price_preview = 0.0
-    
-        if 'month' in request.args:
-            month_str = request.args['month'] + '-01'
-            selected_month = datetime.strptime(month_str, '%Y-%m-%d').date()
-        else:
-            selected_month = datetime.now().replace(day=1)  # Mặc định tháng hiện tại
-    
-        total_kwh = get_total_electricity_usage_in_month(selected_month)
-        total_cost = calculate_total_electricity_cost_before_vat(total_kwh)
-        average_price_preview = total_cost / total_kwh if total_kwh > 0 else 0
-    
-        return render_template(
-            'create_bill.html',
-            contract=contract,
-            tenant=tenant,
-            room=room,
-            last_bill=last_bill,
-            average_price_preview=average_price_preview,
-            selected_month=selected_month.strftime('%Y-%m')
-        )
+    # GET: return render_template với average_price_preview
+    return render_template(
+        'create_bill.html',
+        contract=contract,
+        tenant=tenant,
+        room=room,
+        last_bill=last_bill,
+        average_price_preview=round(average_price_preview)  # Làm tròn để hiển thị đẹp
+    )
     
 @app.route('/pay_bill/<int:bill_id>', methods=['POST'])
 @login_required
