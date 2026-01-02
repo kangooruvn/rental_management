@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Sửa phòng {{ room.name }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Sửa thông tin phòng: {{ room.name }}</h2>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Tên phòng <span class="text-danger">*</span></label>
+                    <input type="text" name="name" value="{{ room.name }}" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tiền thuê phòng (VNĐ/tháng) <span class="text-danger">*</span></label>
+                    <input type="number" name="rent_price" value="{{ room.rent_price }}" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Phí Internet (VNĐ/tháng)</label>
+                    <input type="number" name="internet_fee" value="{{ room.internet_fee }}" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-warning">Cập nhật phòng</button>
+                <a href="{{ url_for('room_detail', room_id=room.id) }}" class="btn btn-secondary ms-2">Quay lại</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
