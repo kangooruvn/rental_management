@@ -6,7 +6,7 @@
 # 4. Access via browser: http://127.0.0.1:5000/
 # Default admin login: username='admin', password='admin'
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,14 +14,28 @@ from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this to a secure key
-# Dùng Postgres trên Render, fallback SQLite khi chạy local
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here_change_in_production')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///rental.db').replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+# ==================== CẤU HÌNH LINH HOẠT ====================
+# VAT điện - năm 2026 là 8%, sửa ở đây nếu thay đổi sau này
+VAT_RATE = 0.08
+
+# Bậc thang giá điện EVN sinh hoạt (chưa VAT) - sửa ở đây nếu EVN thay đổi
+EVN_TIERS = [
+    (0, 50, 1806),      # Bậc 1: 0-50 kWh
+    (50, 100, 1866),    # Bậc 2: 51-100 kWh
+    (100, 200, 2167),   # Bậc 3: 101-200 kWh
+    (200, 300, 2729),   # Bậc 4: 201-300 kWh
+    (300, 400, 3050),   # Bậc 5: 301-400 kWh
+    (400, None, 3151),  # Bậc 6: 401 kWh trở lên
+]
+# ===========================================================
 
 # Models
 class User(db.Model, UserMixin):
@@ -58,21 +72,90 @@ class Bill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
     month = db.Column(db.Date, nullable=False)
-    
-    # Chỉ số điện
     electricity_old = db.Column(db.Float, default=0.0)
     electricity_new = db.Column(db.Float, default=0.0)
-    electricity_price = db.Column(db.Float, nullable=False, default=4000.0)
-    
-    # Chỉ số nước
     water_old = db.Column(db.Float, default=0.0)
     water_new = db.Column(db.Float, default=0.0)
-    
-    # Tính tự động
     electricity_usage = db.Column(db.Float, default=0.0)
     water_usage = db.Column(db.Float, default=0.0)
     total = db.Column(db.Float, nullable=False)
     paid = db.Column(db.Boolean, default=False)
+
+# Hàm tính tiền nước (bậc thang cố định)
+def calculate_water_cost(water_usage):
+    if water_usage <= 0:
+        return 0.0
+    if water_usage <= 5:
+        return water_usage * 16000
+    else:
+        return 5 * 16000 + (water_usage - 5) * 27000
+
+# Hàm lấy tổng kWh điện tất cả phòng trong tháng
+def get_total_electricity_usage_in_month(month_date):
+    start = month_date.replace(day=1)
+    if month_date.month == 12:
+        end = month_date.replace(year=month_date.year + 1, month=1, day=1) - timedelta(days=1)
+    else:
+        end = month_date.replace(month=month_date.month + 1, day=1) - timedelta(days=1)
+    
+    total = db.session.query(db.func.sum(Bill.electricity_usage)).filter(
+        Bill.month.between(start, end)
+    ).scalar()
+    return total or 0.0
+
+# Hàm tính tổng tiền điện chung theo bậc thang EVN
+def calculate_total_electricity_cost_before_vat(total_kwh):
+    if total_kwh <= 0:
+        return 0.0
+    cost = 0.0
+    remaining = total_kwh
+    for low, high, price in EVN_TIERS:
+        tier_size = (high or float('inf')) - low
+        used = min(remaining, tier_size)
+        cost += used * price
+        remaining -= used
+        if remaining <= 0:
+            break
+    return cost
+
+# Hàm tính hóa đơn mới (theo bài toán của bạn)
+def calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, bill_month):
+    room = Room.query.get(Tenant.query.get(contract.tenant_id).room_id)
+    
+    electricity_usage = max(electricity_new - electricity_old, 0)
+    water_usage = max(water_new - water_old, 0)
+    
+    # Tiền nước
+    water_cost = calculate_water_cost(water_usage)
+    
+    # Tổng kWh toàn nhà tháng này (bao gồm cả phòng này)
+    total_month_kwh = get_total_electricity_usage_in_month(bill_month) + electricity_usage
+    
+    # Tổng tiền chung chưa VAT
+    total_month_cost_before_vat = calculate_total_electricity_cost_before_vat(total_month_kwh)
+    
+    # Đơn giá trung bình chưa VAT
+    average_price_before_vat = total_month_cost_before_vat / total_month_kwh if total_month_kwh > 0 else 0
+    
+    # Tiền điện phòng chưa VAT
+    room_electricity_before_vat = electricity_usage * average_price_before_vat
+    
+    # Cộng VAT
+    room_electricity_with_vat = room_electricity_before_vat * (1 + VAT_RATE)
+    
+    # Tổng tiền
+    total = room.rent_price + room.internet_fee + room_electricity_with_vat + water_cost
+    
+    return {
+        'total': total,
+        'electricity_usage': electricity_usage,
+        'water_usage': water_usage,
+        'room_electricity_before_vat': room_electricity_before_vat,
+        'electricity_vat': room_electricity_before_vat * VAT_RATE,
+        'room_electricity_with_vat': room_electricity_with_vat,
+        'water_cost': water_cost,
+        'average_price_before_vat': average_price_before_vat
+    }
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -419,43 +502,41 @@ def create_bill(contract_id):
     tenant = Tenant.query.get(contract.tenant_id)
     room = Room.query.get(tenant.room_id)
     if current_user.role != 'admin' and room.user_id != current_user.id:
-        flash('Access denied')
+        flash('Bạn không có quyền', 'danger')
         return redirect(url_for('dashboard'))
-
-#   # Tìm hóa đơn mới nhất của hợp đồng này để gợi ý chỉ số cũ
+    
     last_bill = Bill.query.filter_by(contract_id=contract_id).order_by(Bill.month.desc()).first()
     
     if request.method == 'POST':
         month_str = request.form['month'] + '-01'
         month = datetime.strptime(month_str, '%Y-%m-%d').date()
         
-        # Lấy chỉ số từ form
         electricity_old = float(request.form['electricity_old'])
         electricity_new = float(request.form['electricity_new'])
         water_old = float(request.form['water_old'])
         water_new = float(request.form['water_new'])
-        electricity_price = float(request.form['electricity_price'])  # Linh hoạt
         
-        # Tính tự động
-        total, electricity_usage, water_usage, electricity_cost, water_cost = calculate_bill(
-            contract, electricity_old, electricity_new, water_old, water_new, electricity_price
-        )
+        bill_data = calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, month)
         
         new_bill = Bill(
-            contract_id=contract_id, month=month,
-            electricity_old=electricity_old, electricity_new=electricity_new,
-            water_old=water_old, water_new=water_new,
-            electricity_price=electricity_price,
-            electricity_usage=electricity_usage, water_usage=water_usage,
-            total=total, paid=False
+            contract_id=contract_id,
+            month=month,
+            electricity_old=electricity_old,
+            electricity_new=electricity_new,
+            water_old=water_old,
+            water_new=water_new,
+            electricity_usage=bill_data['electricity_usage'],
+            water_usage=bill_data['water_usage'],
+            total=bill_data['total'],
+            paid=False
         )
         db.session.add(new_bill)
         db.session.commit()
-        flash('Hóa đơn đã được tạo thành công!')
+        flash('Hóa đơn đã được tạo thành công!', 'success')
         return redirect(url_for('contract_detail', contract_id=contract_id))
     
     return render_template('create_bill.html', contract=contract, tenant=tenant, room=room, last_bill=last_bill)
-
+    
 @app.route('/pay_bill/<int:bill_id>', methods=['POST'])
 @login_required
 def pay_bill(bill_id):
@@ -649,9 +730,8 @@ def tenant_logout():
 # Initialize DB and create default admin
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Tạo bảng nếu chưa có (an toàn nếu đã có)
-
-        # Chỉ tạo admin nếu chưa tồn tại
+        db.create_all()
+        
         if not User.query.filter_by(username='admin').first():
             admin = User(
                 username='admin',
@@ -663,7 +743,6 @@ if __name__ == '__main__':
             print("Tài khoản admin đã được tạo thành công!")
         else:
             print("Tài khoản admin đã tồn tại.")
-    # Render tự set biến PORT, mặc định fallback 5000 nếu local
+    
     port = int(os.environ.get('PORT', 5000))
-    # Bind 0.0.0.0 để Render truy cập được
-    app.run(host='0.0.0.0', port=port, debug=False)  # debug=False cho production
+    app.run(host='0.0.0.0', port=port, debug=False)
