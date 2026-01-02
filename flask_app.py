@@ -68,6 +68,14 @@ class Contract(db.Model):
     end_date = db.Column(db.Date)
     is_extended = db.Column(db.Boolean, default=False)
 
+class TotalElectricityMonth(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    month = db.Column(db.Date, nullable=False)  # Ngày 1 tháng (e.g. 2026-01-01)
+    electricity_old = db.Column(db.Float, default=0.0)  # Chỉ số tổng cũ (từ công tơ nhà)
+    electricity_new = db.Column(db.Float, default=0.0)  # Chỉ số tổng mới
+    total_kwh = db.Column(db.Float, default=0.0)  # Tự tính = new - old
+    average_price = db.Column(db.Float, default=0.0)  # Đơn giá trung bình chưa VAT (tự tính)
+
 class Bill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
@@ -703,6 +711,39 @@ def delete_bill(bill_id):
     db.session.commit()
     flash('Hóa đơn đã được xóa', 'success')
     return redirect(url_for('contract_detail', contract_id=contract.id))
+
+@app.route('/manage_total_electricity', methods=['GET', 'POST'])
+@login_required
+def manage_total_electricity():
+    if current_user.role != 'admin':
+        flash('Chỉ admin mới được truy cập', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    months = TotalElectricityMonth.query.order_by(TotalElectricityMonth.month.desc()).all()
+    
+    if request.method == 'POST':
+        month_str = request.form['month'] + '-01'
+        month = datetime.strptime(month_str, '%Y-%m-%d').date()
+        electricity_old = float(request.form['electricity_old'])
+        electricity_new = float(request.form['electricity_new'])
+        
+        total_kwh = max(electricity_new - electricity_old, 0)
+        total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
+        average_price = total_cost_before_vat / total_kwh if total_kwh > 0 else 0
+        
+        entry = TotalElectricityMonth(
+            month=month,
+            electricity_old=electricity_old,
+            electricity_new=electricity_new,
+            total_kwh=total_kwh,
+            average_price=average_price
+        )
+        db.session.add(entry)
+        db.session.commit()
+        flash('Tổng điện tháng đã được cập nhật!', 'success')
+        return redirect(url_for('manage_total_electricity'))
+    
+    return render_template('manage_total_electricity.html', months=months)
 
 @app.route('/tenant_login', methods=['GET', 'POST'])
 def tenant_login():
