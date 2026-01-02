@@ -26,15 +26,6 @@ login_manager.login_view = 'login'
 # VAT điện - năm 2026 là 8%, sửa ở đây nếu thay đổi sau này
 VAT_RATE = 0.08
 
-# Bậc thang giá điện EVN sinh hoạt (chưa VAT) - sửa ở đây nếu EVN thay đổi
-EVN_TIERS = [
-    (0, 50, 1984),      # Bậc 1: 0-50 kWh
-    (50, 100, 2050),    # Bậc 2: 51-100 kWh
-    (100, 200, 2380),   # Bậc 3: 101-200 kWh
-    (200, 300, 2998),   # Bậc 4: 201-300 kWh
-    (300, 400, 3350),   # Bậc 5: 301-400 kWh
-    (400, None, 3460),  # Bậc 6: 401 kWh trở lên
-]
 # ===========================================================
 
 # Models
@@ -89,6 +80,13 @@ class Bill(db.Model):
     total = db.Column(db.Float, nullable=False)
     paid = db.Column(db.Boolean, default=False)
 
+class PriceTier(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tier_order = db.Column(db.Integer, nullable=False)  # Thứ tự bậc
+    from_kwh = db.Column(db.Float, nullable=False)
+    to_kwh = db.Column(db.Float, nullable=True)  # None = vô hạn
+    price = db.Column(db.Float, nullable=False)  # Đơn giá chưa VAT
+    
 # Hàm tính tiền nước (bậc thang cố định)
 def calculate_water_cost(water_usage):
     if water_usage <= 0:
@@ -113,17 +111,23 @@ def get_total_electricity_usage_in_month(month_date):
 
 # Hàm tính tổng tiền điện chung theo bậc thang EVN
 def calculate_total_electricity_cost_before_vat(total_kwh):
+    """Tính tổng tiền điện chung (chưa VAT) theo bậc thang từ database"""
     if total_kwh <= 0:
         return 0.0
+    
+    tiers = PriceTier.query.order_by(PriceTier.tier_order).all()
     cost = 0.0
     remaining = total_kwh
-    for low, high, price in EVN_TIERS:
-        tier_size = (high or float('inf')) - low
+    
+    for tier in tiers:
+        tier_size = (tier.to_kwh or float('inf')) - tier.from_kwh
         used = min(remaining, tier_size)
-        cost += used * price
-        remaining -= used
+        if used > 0:
+            cost += used * tier.price
+            remaining -= used
         if remaining <= 0:
             break
+    
     return cost
 
 # Hàm tính hóa đơn mới (theo bài toán của bạn)
@@ -744,6 +748,49 @@ def manage_total_electricity():
     
     return render_template('manage_total_electricity.html', months=months)
 
+@app.route('/manage_electricity_prices', methods=['GET', 'POST'])
+@login_required
+def manage_electricity_prices():
+    if current_user.role != 'admin':
+        flash('Chỉ admin mới được truy cập', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    tiers = PriceTier.query.order_by(PriceTier.tier_order).all()
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        tier_id = request.form.get('tier_id')
+        
+        if action == 'edit':
+            tier = PriceTier.query.get_or_404(tier_id)
+            tier.tier_order = int(request.form['tier_order'])
+            tier.from_kwh = float(request.form['from_kwh'])
+            tier.to_kwh = float(request.form['to_kwh']) if request.form['to_kwh'] else None
+            tier.price = float(request.form['price'])
+            db.session.commit()
+            flash('Cập nhật bậc thành công!', 'success')
+        
+        elif action == 'delete':
+            tier = PriceTier.query.get_or_404(tier_id)
+            db.session.delete(tier)
+            db.session.commit()
+            flash('Xóa bậc thành công!', 'success')
+        
+        elif action == 'add':
+            new_tier = PriceTier(
+                tier_order=int(request.form['tier_order']),
+                from_kwh=float(request.form['from_kwh']),
+                to_kwh=float(request.form['to_kwh']) if request.form['to_kwh'] else None,
+                price=float(request.form['price'])
+            )
+            db.session.add(new_tier)
+            db.session.commit()
+            flash('Thêm bậc thành công!', 'success')
+        
+        return redirect(url_for('manage_electricity_prices'))
+    
+    return render_template('manage_electricity_prices.html', tiers=tiers)
+
 @app.route('/tenant_login', methods=['GET', 'POST'])
 def tenant_login():
     if current_user.is_authenticated:
@@ -806,6 +853,21 @@ if __name__ == '__main__':
             print("Tài khoản admin đã được tạo thành công!")
         else:
             print("Tài khoản admin đã tồn tại.")
+
+            # Tạo bảng giá điện từ EVN_TIERS nếu chưa có
+        if PriceTier.query.count() == 0:
+            tiers = [
+                (1, 0, 50, 1984),
+                (2, 50, 100, 2050),
+                (3, 100, 200, 2380),
+                (4, 200, 300, 2998),
+                (5, 300, 400, 3350),
+                (6, 400, None, 3460),
+            ]
+            for order, from_kwh, to_kwh, price in tiers:
+                db.session.add(PriceTier(tier_order=order, from_kwh=from_kwh, to_kwh=to_kwh, price=price))
+            db.session.commit()
+            print("Đã tạo bảng giá điện EVN mới nhất từ code!")
     
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
