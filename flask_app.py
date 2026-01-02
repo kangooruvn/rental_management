@@ -423,6 +423,42 @@ def room_detail(room_id):
     tenants = Tenant.query.filter_by(room_id=room_id).all()
     return render_template('room_detail.html', room=room, tenants=tenants)
 
+@app.route('/edit_room/<int:room_id>', methods=['GET', 'POST'])
+@login_required
+def edit_room(room_id):
+    room = Room.query.get_or_404(room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        room.name = request.form['name']
+        room.rent_price = float(request.form['rent_price'])
+        room.internet_fee = float(request.form['internet_fee'])
+        db.session.commit()
+        flash('Phòng đã được cập nhật thành công!', 'success')
+        return redirect(url_for('room_detail', room_id=room_id))
+    
+    return render_template('edit_room.html', room=room)
+
+@app.route('/delete_room/<int:room_id>', methods=['POST'])
+@login_required
+def delete_room(room_id):
+    room = Room.query.get_or_404(room_id)
+    if current_user.role != 'admin' and room.user_id != current_user.id:
+        flash('Bạn không có quyền', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Kiểm tra phòng có khách thuê chưa
+    if Tenant.query.filter_by(room_id=room_id).first():
+        flash('Không thể xóa phòng đang có khách thuê!', 'danger')
+        return redirect(url_for('room_detail', room_id=room_id))
+    
+    db.session.delete(room)
+    db.session.commit()
+    flash('Phòng đã được xóa thành công!', 'success')
+    return redirect(url_for('dashboard'))
+
 @app.route('/create_tenant/<int:room_id>', methods=['GET', 'POST'])
 @login_required
 def create_tenant(room_id):
