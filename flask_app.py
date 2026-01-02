@@ -554,14 +554,29 @@ def create_bill(contract_id):
         return redirect(url_for('contract_detail', contract_id=contract_id))
     
     # SỬA DÒNG NÀY: Truyền thêm average_price_preview vào template (nếu muốn hiển thị)
-    return render_template(
-        'create_bill.html', 
-        contract=contract, 
-        tenant=tenant, 
-        room=room, 
-        last_bill=last_bill,
-        average_price_preview=average_price_preview  # Thêm dòng này
-    )
+    # Tính đơn giá trung bình dự kiến cho tháng được chọn (nếu có), hoặc tháng hiện tại
+        selected_month = None
+        average_price_preview = 0.0
+    
+        if 'month' in request.args:
+            month_str = request.args['month'] + '-01'
+            selected_month = datetime.strptime(month_str, '%Y-%m-%d').date()
+        else:
+            selected_month = datetime.now().replace(day=1)  # Mặc định tháng hiện tại
+    
+        total_kwh = get_total_electricity_usage_in_month(selected_month)
+        total_cost = calculate_total_electricity_cost_before_vat(total_kwh)
+        average_price_preview = total_cost / total_kwh if total_kwh > 0 else 0
+    
+        return render_template(
+            'create_bill.html',
+            contract=contract,
+            tenant=tenant,
+            room=room,
+            last_bill=last_bill,
+            average_price_preview=average_price_preview,
+            selected_month=selected_month.strftime('%Y-%m')
+        )
     
 @app.route('/pay_bill/<int:bill_id>', methods=['POST'])
 @login_required
