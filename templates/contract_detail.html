@@ -35,12 +35,11 @@
         <thead class="table-dark">
             <tr>
                 <th>Tháng</th>
-                <th>Điện cũ (kWh)</th>
-                <th>Điện mới (kWh)</th>
                 <th>Điện dùng (kWh)</th>
-                <th>Tiền điện (đ)</th>
-                <th>Nước cũ (m³)</th>
-                <th>Nước mới (m³)</th>
+                <th>Đơn giá TB (đ/kWh, chưa VAT)</th>
+                <th>Tiền điện (chưa VAT)</th>
+                <th>VAT 8%</th>
+                <th>Tiền điện (có VAT)</th>
                 <th>Nước dùng (m³)</th>
                 <th>Tiền nước (đ)</th>
                 <th>Tổng tiền (VNĐ)</th>
@@ -52,21 +51,13 @@
             {% for bill in bills %}
             <tr>
                 <td>{{ bill.month.strftime('%m/%Y') }}</td>
-                <td>{{ "%.1f" % bill.electricity_old }}</td>
-                <td>{{ "%.1f" % bill.electricity_new }}</td>
                 <td>{{ "%.1f" % bill.electricity_usage }}</td>
-                <td>{{ "{:,.0f}".format(bill.electricity_usage * bill.electricity_price) }}</td>
-                <td>{{ "%.4f" % bill.water_old }}</td>
-                <td>{{ "%.4f" % bill.water_new }}</td>
+                <td>{{ "{:,.0f}".format(bill.average_price_before_vat|default(0)) }}</td>
+                <td>{{ "{:,.0f}".format(bill.room_electricity_before_vat|default(0)) }}</td>
+                <td>{{ "{:,.0f}".format(bill.electricity_vat|default(0)) }}</td>
+                <td class="fw-bold text-primary">{{ "{:,.0f}".format(bill.room_electricity_with_vat|default(0)) }}</td>
                 <td>{{ "%.4f" % bill.water_usage }}</td>
-                <!-- Tính tiền nước bậc thang an toàn bằng if-else Jinja chuẩn -->
-                <td>
-                    {% if bill.water_usage > 5 %}
-                        {{ "{:,.0f}".format(5 * 16000 + (bill.water_usage - 5) * 27000) }}
-                    {% else %}
-                        {{ "{:,.0f}".format(bill.water_usage * 16000) }}
-                    {% endif %}
-                </td>
+                <td>{{ "{:,.0f}".format(bill.water_cost|default(0)) }}</td>
                 <td class="fw-bold">{{ "{:,.0f}".format(bill.total) }}</td>
                 <td>
                     {% if bill.paid %}
@@ -77,16 +68,14 @@
                 </td>
                 <td>
                     <a href="{{ url_for('bill_print', bill_id=bill.id) }}" class="btn btn-sm btn-danger text-white me-1" target="_blank">
-                        <i class="bi bi-printer"></i> In
+                        In
                     </a>
                     <a href="{{ url_for('edit_bill', bill_id=bill.id) }}" class="btn btn-sm btn-warning text-white me-1">
-                        <i class="bi bi-pencil"></i> Sửa
+                        Sửa
                     </a>
                     <form method="POST" action="{{ url_for('delete_bill', bill_id=bill.id) }}" class="d-inline"
-                          onsubmit="return confirm('Bạn có chắc muốn xóa hóa đơn này?')">
-                        <button type="submit" class="btn btn-sm btn-danger">
-                            <i class="bi bi-trash"></i> Xóa
-                        </button>
+                          onsubmit="return confirm('Xóa hóa đơn này?')">
+                        <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
                     </form>
                     {% if not bill.paid %}
                     <form method="POST" action="{{ url_for('pay_bill', bill_id=bill.id) }}" class="d-inline">
@@ -97,11 +86,10 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="12" class="text-center">Chưa có hóa đơn nào</td>
+                <td colspan="11" class="text-center">Chưa có hóa đơn nào</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-
 {% endblock %}
