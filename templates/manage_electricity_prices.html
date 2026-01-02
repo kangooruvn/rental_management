@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Quản lý giá điện EVN{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Quản lý bậc thang giá điện sinh hoạt EVN</h2>
+    <p class="text-muted">Thay đổi ở đây sẽ áp dụng ngay cho hóa đơn mới. VAT 8% tự động cộng vào tiền điện.</p>
+
+    <!-- Form thêm bậc mới -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5>Thêm bậc mới</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="action" value="add">
+                <div class="row g-3">
+                    <div class="col">
+                        <label>Thứ tự bậc</label>
+                        <input type="number" name="tier_order" class="form-control" required>
+                    </div>
+                    <div class="col">
+                        <label>Từ kWh</label>
+                        <input type="number" step="0.01" name="from_kwh" class="form-control" required>
+                    </div>
+                    <div class="col">
+                        <label>Đến kWh (trống = vô hạn)</label>
+                        <input type="number" step="0.01" name="to_kwh" class="form-control">
+                    </div>
+                    <div class="col">
+                        <label>Đơn giá (đ/kWh, chưa VAT)</label>
+                        <input type="number" step="0.01" name="price" class="form-control" required>
+                    </div>
+                    <div class="col-auto d-flex align-items-end">
+                        <button type="submit" class="btn btn-success">Thêm bậc</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bảng danh sách bậc hiện tại -->
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Bậc</th>
+                    <th>Từ kWh</th>
+                    <th>Đến kWh</th>
+                    <th>Đơn giá (đ/kWh)</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tier in tiers %}
+                <tr>
+                    <td>Bậc {{ tier.tier_order }}</td>
+                    <td>{{ "%.0f" % tier.from_kwh }}</td>
+                    <td>{% if tier.to_kwh %}{{ "%.0f" % tier.to_kwh }}{% else %}Vô hạn{% endif %}</td>
+                    <td>{{ "{:,.0f}".format(tier.price) }}</td>
+                    <td>
+                        <form method="POST" class="d-inline">
+                            <input type="hidden" name="action" value="edit">
+                            <input type="hidden" name="tier_id" value="{{ tier.id }}">
+                            <div class="row g-2">
+                                <div class="col"><input type="number" name="tier_order" value="{{ tier.tier_order }}" class="form-control form-control-sm" required></div>
+                                <div class="col"><input type="number" step="0.01" name="from_kwh" value="{{ tier.from_kwh }}" class="form-control form-control-sm" required></div>
+                                <div class="col"><input type="number" step="0.01" name="to_kwh" value="{{ tier.to_kwh if tier.to_kwh else '' }}" class="form-control form-control-sm"></div>
+                                <div class="col"><input type="number" step="0.01" name="price" value="{{ tier.price }}" class="form-control form-control-sm" required></div>
+                                <div class="col-auto"><button type="submit" class="btn btn-sm btn-warning">Sửa</button></div>
+                            </div>
+                        </form>
+                        <form method="POST" class="d-inline ms-2" onsubmit="return confirm('Xóa bậc này?')">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="tier_id" value="{{ tier.id }}">
+                            <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Quay lại</a>
+</div>
+{% endblock %}
