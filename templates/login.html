@@ -19,6 +19,9 @@
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
                 </form>
+                <div class="text-center mt-3">
+                    <p>Chưa có tài khoản? <a href="{{ url_for('signup') }}" class="text-primary">Đăng ký miễn phí</a></p>
+                </div>
                 <div class="text-center mt-4">
                     <p class="mb-2 text-muted">Bạn là khách thuê phòng trọ?</p>
                     <a href="{{ url_for('tenant_login') }}" class="btn btn-outline-info btn-lg">
