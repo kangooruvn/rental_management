@@ -293,8 +293,14 @@ def signup():
         db.session.add(new_user)
         db.session.commit()
         
-        flash('Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.', 'success')
-        return redirect(url_for('login'))
+        login_user(new_user)
+        flash(
+            f'Chào mừng {new_user.username} đến với Hệ thống Quản lý Phòng Trọ! 🎉\n'
+            'Bạn đã đăng ký thành công. Bây giờ bạn có thể bắt đầu thêm phòng và quản lý riêng của mình.\n'
+            'Chúc bạn sử dụng vui vẻ!',
+            'success'
+        )
+        return redirect(url_for('dashboard'))
     
     return render_template('signup.html')
 
