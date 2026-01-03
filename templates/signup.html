@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Đăng ký tài khoản mới{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3>Đăng ký tài khoản quản lý phòng trọ</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
+                            <input type="text" name="username" class="form-control" placeholder="Ví dụ: nguyenvana, phongtro123" required>
+                            <small class="text-muted">Chỉ dùng chữ cái, số, không dấu, không khoảng trắng.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                            <input type="password" name="password" class="form-control" placeholder="Mật khẩu an toàn" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Xác nhận mật khẩu <span class="text-danger">*</span></label>
+                            <input type="password" name="confirm_password" class="form-control" placeholder="Nhập lại mật khẩu" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">Đăng ký ngay</button>
+                        </div>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p>Đã có tài khoản? <a href="{{ url_for('login') }}" class="text-primary">Đăng nhập ở đây</a></p>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-4 text-muted">
+                <small>Ứng dụng quản lý phòng trọ cá nhân - Dữ liệu của bạn hoàn toàn riêng biệt và bảo mật.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
