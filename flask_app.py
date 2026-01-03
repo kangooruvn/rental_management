@@ -264,6 +264,40 @@ def register():
     
     return render_template('register.html', tenants=tenants)    
 
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password']
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Kiểm tra mật khẩu khớp
+        if password != confirm_password:
+            flash('Mật khẩu xác nhận không khớp!', 'danger')
+            return render_template('signup.html')
+        
+        # Kiểm tra username trùng
+        if User.query.filter_by(username=username).first():
+            flash('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.', 'danger')
+            return render_template('signup.html')
+        
+        # Tạo user mới với role = 'user' (chủ trọ bình thường)
+        new_user = User(
+            username=username,
+            password=generate_password_hash(password, method='pbkdf2:sha256'),
+            role='user'  # Mọi người tự đăng ký đều là chủ trọ thường
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash('Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('signup.html')
+
 @app.route('/manage_users')
 @login_required
 def manage_users():
