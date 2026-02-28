@@ -17,7 +17,13 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here_change_in_production')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///rental.db').replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,          # Kiểm tra kết nối trước khi dùng → tự reconnect nếu chết
+    'pool_recycle': 300,            # Tái tạo kết nối sau 5 phút
+    'pool_size': 5,                 # Giữ 5 kết nối
+    'max_overflow': 10,             # Cho phép thêm 10 kết nối tạm
+    'pool_timeout': 30              # Chờ tối đa 30 giây
+}
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -798,29 +804,39 @@ def manage_total_electricity():
         flash('Chỉ admin mới được truy cập', 'danger')
         return redirect(url_for('dashboard'))
     
-    months = TotalElectricityMonth.query.order_by(TotalElectricityMonth.month.desc()).all()
+    months = []
+    try:
+        months = TotalElectricityMonth.query.order_by(TotalElectricityMonth.month.desc()).all()
+    except Exception as e:
+        db.session.rollback()
+        flash('Kết nối database tạm gián đoạn. Vui lòng thử lại.', 'warning')
+        db.session.close()
     
     if request.method == 'POST':
-        month_str = request.form['month'] + '-01'
-        month = datetime.strptime(month_str, '%Y-%m-%d').date()
-        electricity_old = float(request.form['electricity_old'])
-        electricity_new = float(request.form['electricity_new'])
-        
-        total_kwh = max(electricity_new - electricity_old, 0)
-        total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
-        average_price = total_cost_before_vat / total_kwh if total_kwh > 0 else 0
-        
-        entry = TotalElectricityMonth(
-            month=month,
-            electricity_old=electricity_old,
-            electricity_new=electricity_new,
-            total_kwh=total_kwh,
-            average_price=average_price
-        )
-        db.session.add(entry)
-        db.session.commit()
-        flash('Tổng điện tháng đã được cập nhật!', 'success')
-        return redirect(url_for('manage_total_electricity'))
+        try:
+            month_str = request.form['month'] + '-01'
+            month = datetime.strptime(month_str, '%Y-%m-%d').date()
+            electricity_old = float(request.form['electricity_old'])
+            electricity_new = float(request.form['electricity_new'])
+            
+            total_kwh = max(electricity_new - electricity_old, 0)
+            total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
+            average_price = total_cost_before_vat / total_kwh if total_kwh > 0 else 0
+            
+            entry = TotalElectricityMonth(
+                month=month,
+                electricity_old=electricity_old,
+                electricity_new=electricity_new,
+                total_kwh=total_kwh,
+                average_price=average_price
+            )
+            db.session.add(entry)
+            db.session.commit()
+            flash('Tổng điện tháng đã được cập nhật thành công!', 'success')
+            return redirect(url_for('manage_total_electricity'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Lỗi khi lưu: {str(e)}. Vui lòng thử lại.', 'danger')
     
     return render_template('manage_total_electricity.html', months=months)
 
