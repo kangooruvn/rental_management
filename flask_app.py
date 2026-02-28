@@ -145,20 +145,18 @@ def calculate_bill(contract, electricity_old, electricity_new, water_old, water_
     
     water_cost = calculate_water_cost(water_usage)
     
-    # Lấy tổng kWh từ bảng TotalElectricityMonth (admin nhập từ công tơ)
-    month_entry = TotalElectricityMonth.query.filter_by(month=bill_month).first()
-    total_month_kwh = month_entry.total_kwh if month_entry else 0.0  # Nếu chưa nhập, dùng 0 (tiền = 0)
+    # Lấy tổng kWh toàn nhà tháng này
+    total_kwh = get_total_electricity_usage_in_month(bill_month) + electricity_usage
     
-    # Tính tổng tiền chung chưa VAT
-    total_month_cost_before_vat = calculate_total_electricity_cost_before_vat(total_month_kwh)
+    # Bảo vệ chia cho 0
+    if total_kwh == 0:
+        average_price = 0.0
+        room_electricity_before_vat = 0.0
+    else:
+        total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
+        average_price = total_cost_before_vat / total_kwh
+        room_electricity_before_vat = electricity_usage * average_price
     
-    # Đơn giá trung bình chưa VAT
-    average_price = total_month_cost_before_vat / total_month_kwh if total_month_kwh > 0 else 0
-    
-    # Tiền điện phòng chưa VAT
-    room_electricity_before_vat = electricity_usage * average_price
-    
-    # Cộng VAT
     room_electricity_with_vat = room_electricity_before_vat * (1 + VAT_RATE)
     
     total = room.rent_price + room.internet_fee + room_electricity_with_vat + water_cost
@@ -171,7 +169,7 @@ def calculate_bill(contract, electricity_old, electricity_new, water_old, water_
         'electricity_vat': room_electricity_before_vat * VAT_RATE,
         'room_electricity_with_vat': room_electricity_with_vat,
         'water_cost': water_cost,
-        'average_price_before_vat': average_price_before_vat
+        'average_price_before_vat': average_price
     }
 
 @login_manager.user_loader
@@ -608,32 +606,37 @@ def create_bill(contract_id):
     average_price_preview = total_cost_preview / total_kwh_preview if total_kwh_preview > 0 else 0
     
     if request.method == 'POST':
-        month_str = request.form['month'] + '-01'
-        month = datetime.strptime(month_str, '%Y-%m-%d').date()
-        
-        electricity_old = float(request.form['electricity_old'])
-        electricity_new = float(request.form['electricity_new'])
-        water_old = float(request.form['water_old'])
-        water_new = float(request.form['water_new'])
-        
-        bill_data = calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, month)
-        
-        new_bill = Bill(
-            contract_id=contract_id,
-            month=month,
-            electricity_old=electricity_old,
-            electricity_new=electricity_new,
-            water_old=water_old,
-            water_new=water_new,
-            electricity_usage=bill_data['electricity_usage'],
-            water_usage=bill_data['water_usage'],
-            total=bill_data['total'],
-            paid=False
-        )
-        db.session.add(new_bill)
-        db.session.commit()
-        flash('Hóa đơn đã được tạo thành công!', 'success')
-        return redirect(url_for('contract_detail', contract_id=contract_id))
+        try:
+            month_str = request.form['month'] + '-01'
+            month = datetime.strptime(month_str, '%Y-%m-%d').date()
+            
+            electricity_old = float(request.form.get('electricity_old', 0))
+            electricity_new = float(request.form.get('electricity_new', 0))
+            water_old = float(request.form.get('water_old', 0))
+            water_new = float(request.form.get('water_new', 0))
+            
+            bill_data = calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, month)
+            
+            new_bill = Bill(
+                contract_id=contract_id,
+                month=month,
+                electricity_old=electricity_old,
+                electricity_new=electricity_new,
+                water_old=water_old,
+                water_new=water_new,
+                electricity_usage=bill_data['electricity_usage'],
+                water_usage=bill_data['water_usage'],
+                total=bill_data['total'],
+                paid=False
+            )
+            db.session.add(new_bill)
+            db.session.commit()
+            flash('Hóa đơn đã được tạo thành công!', 'success')
+            return redirect(url_for('contract_detail', contract_id=contract_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Lỗi khi tạo hóa đơn: {str(e)}. Vui lòng kiểm tra lại chỉ số hoặc thử lại.', 'danger')
+            return redirect(url_for('create_bill', contract_id=contract_id))
     
     # GET: return render_template với average_price_preview
     return render_template(
