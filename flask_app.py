@@ -148,15 +148,16 @@ def calculate_bill(contract, electricity_old, electricity_new, water_old, water_
     # Lấy tổng kWh toàn nhà tháng này
     total_kwh = get_total_electricity_usage_in_month(bill_month) + electricity_usage
     
-    # Bảo vệ chia cho 0
-    if total_kwh == 0:
-        average_price = 0.0
-        room_electricity_before_vat = 0.0
-    else:
-        total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
-        average_price = total_cost_before_vat / total_kwh
-        room_electricity_before_vat = electricity_usage * average_price
+    # Tính tổng tiền chung chưa VAT
+    total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
     
+    # Đơn giá trung bình chưa VAT (bảo vệ chia cho 0)
+    average_price = total_cost_before_vat / total_kwh if total_kwh > 0 else 0.0
+    
+    # Tiền điện phòng chưa VAT
+    room_electricity_before_vat = electricity_usage * average_price
+    
+    # Cộng VAT
     room_electricity_with_vat = room_electricity_before_vat * (1 + VAT_RATE)
     
     total = room.rent_price + room.internet_fee + room_electricity_with_vat + water_cost
@@ -645,7 +646,7 @@ def create_bill(contract_id):
         tenant=tenant,
         room=room,
         last_bill=last_bill,
-        average_price_preview=round(average_price_preview)  # Làm tròn để hiển thị đẹp
+        average_price_preview=round(average_price_preview)  # Làm tròn đẹp
     )
     
 @app.route('/pay_bill/<int:bill_id>', methods=['POST'])
