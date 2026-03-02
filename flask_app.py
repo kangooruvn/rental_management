@@ -843,6 +843,47 @@ def manage_total_electricity():
     
     return render_template('manage_total_electricity.html', months=months)
 
+@app.route('/edit_total_electricity/<int:entry_id>', methods=['POST'])
+@login_required
+def edit_total_electricity(entry_id):
+    if current_user.role != 'admin':
+        flash('Chỉ admin mới được truy cập', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    entry = TotalElectricityMonth.query.get_or_404(entry_id)
+    
+    month_str = request.form['month'] + '-01'
+    month = datetime.strptime(month_str, '%Y-%m-%d').date()
+    electricity_old = float(request.form['electricity_old'])
+    electricity_new = float(request.form['electricity_new'])
+    
+    total_kwh = max(electricity_new - electricity_old, 0)
+    total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
+    average_price = total_cost_before_vat / total_kwh if total_kwh > 0 else 0
+    
+    entry.month = month
+    entry.electricity_old = electricity_old
+    entry.electricity_new = electricity_new
+    entry.total_kwh = total_kwh
+    entry.average_price = average_price
+    
+    db.session.commit()
+    flash('Tổng điện tháng đã được cập nhật thành công!', 'success')
+    return redirect(url_for('manage_total_electricity'))
+
+@app.route('/delete_total_electricity/<int:entry_id>', methods=['POST'])
+@login_required
+def delete_total_electricity(entry_id):
+    if current_user.role != 'admin':
+        flash('Chỉ admin mới được truy cập', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    entry = TotalElectricityMonth.query.get_or_404(entry_id)
+    db.session.delete(entry)
+    db.session.commit()
+    flash('Tổng điện tháng đã được xóa thành công!', 'success')
+    return redirect(url_for('manage_total_electricity'))
+
 @app.route('/manage_electricity_prices', methods=['GET', 'POST'])
 @login_required
 def manage_electricity_prices():
