@@ -39,20 +39,42 @@
             </tr>
         </thead>
         <tbody>
-            {% for entry in months %}
-            <tr>
-                <td>{{ entry.month.strftime('%m/%Y') }}</td>
-                <td>{{ "%.1f" % entry.total_kwh }}</td>
-                <td>{{ "{:,.0f}".format(entry.average_price) }}</td>
-                <td>
-                    <!-- Sửa hoặc xóa nếu cần -->
-                </td>
-            </tr>
+            {% if months %}
+                {% for entry in months %}
+                <tr>
+                    <td>{{ entry.month.strftime('%m/%Y') }}</td>
+                    <td>{{ "%.1f" % entry.total_kwh }}</td>
+                    <td>{{ "{:,.0f}".format(entry.average_price) }}</td>
+                    <td>
+                        <!-- Form sửa -->
+                        <form method="POST" action="{{ url_for('edit_total_electricity', entry_id=entry.id) }}" class="d-inline">
+                            <div class="row g-1">
+                                <div class="col">
+                                    <input type="month" name="month" value="{{ entry.month.strftime('%Y-%m') }}" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col">
+                                    <input type="number" step="0.1" name="electricity_old" value="{{ entry.electricity_old }}" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col">
+                                    <input type="number" step="0.1" name="electricity_new" value="{{ entry.electricity_new }}" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-sm btn-warning">Sửa</button>
+                                </div>
+                            </div>
+                        </form>
+                        <!-- Form xóa -->
+                        <form method="POST" action="{{ url_for('delete_total_electricity', entry_id=entry.id) }}" class="d-inline ms-2" onsubmit="return confirm('Xóa tổng điện tháng này?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
             {% else %}
             <tr>
-                <td colspan="4">Chưa có tháng nào. Nhập tháng đầu tiên!</td>
+                <td colspan="4" class="text-center text-muted">Chưa có tháng nào. Hãy thêm tháng đầu tiên.</td>
             </tr>
-            {% endfor %}
+            {% endif %}
         </tbody>
     </table>
 </div>
