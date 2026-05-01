@@ -28,6 +28,41 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# ==================== KHỞI TẠO DATABASE KHI DEPLOY ====================
+# Chạy ngoài __main__ để gunicorn (Render.com) cũng khởi tạo được DB
+def initialize_database():
+    db.create_all()
+
+    if not User.query.filter_by(username='admin').first():
+        admin = User(
+            username='admin',
+            password=generate_password_hash('admin', method='pbkdf2:sha256'),
+            role='admin'
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("Tài khoản admin đã được tạo thành công!")
+    else:
+        print("Tài khoản admin đã tồn tại.")
+
+    if PriceTier.query.count() == 0:
+        tiers = [
+            (1, 0, 50, 1984),
+            (2, 50, 100, 2050),
+            (3, 100, 200, 2380),
+            (4, 200, 300, 2998),
+            (5, 300, 400, 3350),
+            (6, 400, None, 3460),
+        ]
+        for order, from_kwh, to_kwh, price in tiers:
+            db.session.add(PriceTier(tier_order=order, from_kwh=from_kwh, to_kwh=to_kwh, price=price))
+        db.session.commit()
+        print("Đã tạo bảng giá điện EVN mới nhất!")
+
+with app.app_context():
+    initialize_database()
+# ======================================================================
+
 # ==================== CẤU HÌNH LINH HOẠT ====================
 # VAT điện - năm 2026 là 8%, sửa ở đây nếu thay đổi sau này
 VAT_RATE = 0.08
@@ -175,30 +210,6 @@ def calculate_bill(contract, electricity_old, electricity_new, water_old, water_
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
-
-# Helper functions
-def calculate_water_cost(usage):
-    if usage <= 5:
-        return usage * 16000
-    else:
-        return (5 * 16000) + ((usage - 5) * 27000)
-
-def calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, electricity_price=4000.0):
-    room = Room.query.get(Tenant.query.get(contract.tenant_id).room_id)
-    
-    # Tính số dùng
-    electricity_usage = electricity_new - electricity_old if electricity_new >= electricity_old else 0
-    water_usage = water_new - water_old if water_new >= water_old else 0
-    
-    # Tính tiền điện
-    electricity_cost = electricity_usage * electricity_price
-    
-    # Tính tiền nước
-    water_cost = calculate_water_cost(water_usage)
-    
-    # Tổng
-    total = room.rent_price + room.internet_fee + electricity_cost + water_cost
-    return total, electricity_usage, water_usage, electricity_cost, water_cost
 
 # Routes
 @app.route('/login', methods=['GET', 'POST'])
@@ -975,35 +986,5 @@ def tenant_logout():
     
 # Initialize DB and create default admin
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                password=generate_password_hash('admin', method='pbkdf2:sha256'),
-                role='admin'
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print("Tài khoản admin đã được tạo thành công!")
-        else:
-            print("Tài khoản admin đã tồn tại.")
-
-            # Tạo bảng giá điện từ EVN_TIERS nếu chưa có
-        if PriceTier.query.count() == 0:
-            tiers = [
-                (1, 0, 50, 1984),
-                (2, 50, 100, 2050),
-                (3, 100, 200, 2380),
-                (4, 200, 300, 2998),
-                (5, 300, 400, 3350),
-                (6, 400, None, 3460),
-            ]
-            for order, from_kwh, to_kwh, price in tiers:
-                db.session.add(PriceTier(tier_order=order, from_kwh=from_kwh, to_kwh=to_kwh, price=price))
-            db.session.commit()
-            print("Đã tạo bảng giá điện EVN mới nhất từ code!")
-    
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
