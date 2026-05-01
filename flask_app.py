@@ -118,6 +118,11 @@ class Bill(db.Model):
     water_new = db.Column(db.Float, default=0.0)
     electricity_usage = db.Column(db.Float, default=0.0)
     water_usage = db.Column(db.Float, default=0.0)
+    average_price_before_vat = db.Column(db.Float, default=0.0)      # Đơn giá trung bình chưa VAT
+    room_electricity_before_vat = db.Column(db.Float, default=0.0)   # Tiền điện chưa VAT
+    electricity_vat = db.Column(db.Float, default=0.0)               # Tiền VAT điện
+    room_electricity_with_vat = db.Column(db.Float, default=0.0)     # Tiền điện đã có VAT
+    water_cost = db.Column(db.Float, default=0.0)                    # Tiền nước
     total = db.Column(db.Float, nullable=False)
     paid = db.Column(db.Boolean, default=False)
 
@@ -637,6 +642,11 @@ def create_bill(contract_id):
                 water_new=water_new,
                 electricity_usage=bill_data['electricity_usage'],
                 water_usage=bill_data['water_usage'],
+                average_price_before_vat=bill_data['average_price_before_vat'],
+                room_electricity_before_vat=bill_data['room_electricity_before_vat'],
+                electricity_vat=bill_data['electricity_vat'],
+                room_electricity_with_vat=bill_data['room_electricity_with_vat'],
+                water_cost=bill_data['water_cost'],
                 total=bill_data['total'],
                 paid=False
             )
@@ -692,21 +702,11 @@ def bill_print(bill_id):
         flash('Bạn không có quyền xem hóa đơn này', 'danger')
         return redirect(url_for('dashboard'))
 
-    electricity_cost = bill.electricity_usage * 4000
-    water_cost = calculate_water_cost(bill.water_usage)
-
-    if bill.water_usage > 5:
-        water_detail = f"5 khối đầu: 5 × 16.000 = 80.000 đ<br>Các khối tiếp: {(bill.water_usage - 5):.2f} × 27.000 = {((bill.water_usage - 5)*27000):,.0f} đ"
-    else:
-        water_detail = f"5 khối đầu: {bill.water_usage:.2f} × 16.000 = {water_cost:,.0f} đ<br>Các khối tiếp: 0 × 27.000 = 0 đ"
-
     return render_template('bill_print.html',
                            bill=bill,
                            tenant=tenant,
                            room=room,
-                           electricity_cost=electricity_cost,
-                           water_cost=water_cost,
-                           water_detail=water_detail)
+                           datetime=datetime)
 
 # --- Sửa hợp đồng ---
 @app.route('/edit_contract/<int:contract_id>', methods=['GET', 'POST'])
@@ -785,6 +785,11 @@ def edit_bill(bill_id):
         bill.water_new = water_new
         bill.electricity_usage = bill_data['electricity_usage']
         bill.water_usage = bill_data['water_usage']
+        bill.average_price_before_vat = bill_data['average_price_before_vat']
+        bill.room_electricity_before_vat = bill_data['room_electricity_before_vat']
+        bill.electricity_vat = bill_data['electricity_vat']
+        bill.room_electricity_with_vat = bill_data['room_electricity_with_vat']
+        bill.water_cost = bill_data['water_cost']
         bill.total = bill_data['total']
         
         db.session.commit()
@@ -792,7 +797,8 @@ def edit_bill(bill_id):
         return redirect(url_for('contract_detail', contract_id=contract.id))
     
     # GET: hiển thị form sửa
-    return render_template('edit_bill.html', bill=bill, tenant=tenant, room=room, contract=contract)
+    return render_template('edit_bill.html', bill=bill, tenant=tenant, room=room, contract=contract,
+                           average_price_before_vat=bill.average_price_before_vat)
 
 # --- Xóa hóa đơn ---
 @app.route('/delete_bill/<int:bill_id>', methods=['POST'])
