@@ -186,6 +186,25 @@ def load_user(user_id):
 def initialize_database():
     db.create_all()
 
+    # === MIGRATION: Thêm các cột mới vào bảng bill nếu chưa có ===
+    # Cần thiết vì db.create_all() không tự ALTER bảng đã tồn tại
+    new_bill_columns = {
+        'average_price_before_vat':    'DOUBLE PRECISION DEFAULT 0.0',
+        'room_electricity_before_vat': 'DOUBLE PRECISION DEFAULT 0.0',
+        'electricity_vat':             'DOUBLE PRECISION DEFAULT 0.0',
+        'room_electricity_with_vat':   'DOUBLE PRECISION DEFAULT 0.0',
+        'water_cost':                  'DOUBLE PRECISION DEFAULT 0.0',
+    }
+    with db.engine.connect() as conn:
+        for col_name, col_def in new_bill_columns.items():
+            try:
+                conn.execute(db.text(f'ALTER TABLE bill ADD COLUMN {col_name} {col_def}'))
+                conn.commit()
+                print(f"✅ Đã thêm cột bill.{col_name}")
+            except Exception:
+                conn.rollback()  # Cột đã tồn tại → bỏ qua
+    # =============================================================
+
     if not User.query.filter_by(username='admin').first():
         admin = User(
             username='admin',
