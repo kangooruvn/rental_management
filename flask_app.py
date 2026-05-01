@@ -28,41 +28,6 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# ==================== KHỞI TẠO DATABASE KHI DEPLOY ====================
-# Chạy ngoài __main__ để gunicorn (Render.com) cũng khởi tạo được DB
-def initialize_database():
-    db.create_all()
-
-    if not User.query.filter_by(username='admin').first():
-        admin = User(
-            username='admin',
-            password=generate_password_hash('admin', method='pbkdf2:sha256'),
-            role='admin'
-        )
-        db.session.add(admin)
-        db.session.commit()
-        print("Tài khoản admin đã được tạo thành công!")
-    else:
-        print("Tài khoản admin đã tồn tại.")
-
-    if PriceTier.query.count() == 0:
-        tiers = [
-            (1, 0, 50, 1984),
-            (2, 50, 100, 2050),
-            (3, 100, 200, 2380),
-            (4, 200, 300, 2998),
-            (5, 300, 400, 3350),
-            (6, 400, None, 3460),
-        ]
-        for order, from_kwh, to_kwh, price in tiers:
-            db.session.add(PriceTier(tier_order=order, from_kwh=from_kwh, to_kwh=to_kwh, price=price))
-        db.session.commit()
-        print("Đã tạo bảng giá điện EVN mới nhất!")
-
-with app.app_context():
-    initialize_database()
-# ======================================================================
-
 # ==================== CẤU HÌNH LINH HOẠT ====================
 # VAT điện - năm 2026 là 8%, sửa ở đây nếu thay đổi sau này
 VAT_RATE = 0.08
@@ -215,6 +180,41 @@ def calculate_bill(contract, electricity_old, electricity_new, water_old, water_
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# ==================== KHỞI TẠO DATABASE KHI DEPLOY ====================
+# Đặt sau Models để User, PriceTier... đã được định nghĩa
+def initialize_database():
+    db.create_all()
+
+    if not User.query.filter_by(username='admin').first():
+        admin = User(
+            username='admin',
+            password=generate_password_hash('admin', method='pbkdf2:sha256'),
+            role='admin'
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("Tài khoản admin đã được tạo thành công!")
+    else:
+        print("Tài khoản admin đã tồn tại.")
+
+    if PriceTier.query.count() == 0:
+        tiers = [
+            (1, 0, 50, 1984),
+            (2, 50, 100, 2050),
+            (3, 100, 200, 2380),
+            (4, 200, 300, 2998),
+            (5, 300, 400, 3350),
+            (6, 400, None, 3460),
+        ]
+        for order, from_kwh, to_kwh, price in tiers:
+            db.session.add(PriceTier(tier_order=order, from_kwh=from_kwh, to_kwh=to_kwh, price=price))
+        db.session.commit()
+        print("Đã tạo bảng giá điện EVN mới nhất!")
+
+with app.app_context():
+    initialize_database()
+# ======================================================================
 
 # Routes
 @app.route('/login', methods=['GET', 'POST'])
