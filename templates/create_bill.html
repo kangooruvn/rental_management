@@ -33,12 +33,12 @@
 
         <div class="mb-3">
             <label class="form-label">Chỉ số nước cũ</label>
-            <input type="number" step="0.01" name="water_old" class="form-control" value="{% if last_bill %}{{ last_bill.water_new }}{% else %}0{% endif %}" required>
+            <input type="number" step="0.0001" name="water_old" class="form-control" value="{% if last_bill %}{{ last_bill.water_new }}{% else %}0{% endif %}" required>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Chỉ số nước mới</label>
-            <input type="number" step="0.01" name="water_new" class="form-control" required>
+            <input type="number" step="0.0001" name="water_new" class="form-control" required>
         </div>
 
         <button type="submit" class="btn btn-primary">Tạo hóa đơn</button>
