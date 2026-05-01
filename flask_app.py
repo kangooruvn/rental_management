@@ -427,54 +427,61 @@ def delete_user(user_id):
 @login_required
 def dashboard():
     rooms = Room.query.filter_by(user_id=current_user.id).all() if current_user.role != 'admin' else Room.query.all()
-    # === THÊM ĐOẠN NÀY ĐỂ HIỂN THỊ ĐÚNG TÊN KHÁCH TRONG DANH SÁCH ===
+
+    # Gắn tenant đang hoạt động vào mỗi phòng để hiển thị trong danh sách
+    today = datetime.now().date()
+    current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     for room in rooms:
         active_tenant = Tenant.query.join(Contract).filter(
             Tenant.room_id == room.id,
-            Contract.end_date >= datetime.now().date()
+            Contract.end_date >= today
         ).first()
         if not active_tenant:
             active_tenant = Tenant.query.filter_by(room_id=room.id).order_by(Tenant.id.desc()).first()
         room.tenant = active_tenant
-    # ============================================================
-    # Tính tổng quan
+
+    # Tính các chỉ số tổng quan
     total_rooms = len(rooms)
     occupied_rooms = 0
     total_due = 0
     total_paid = 0
     overdue_bills = 0
-    current_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     for room in rooms:
-        tenant = Tenant.query.filter_by(room_id=room.id).first()
-        if tenant:
+        # Chỉ tính phòng có hợp đồng còn hiệu lực
+        active_contract = Contract.query.join(Tenant).filter(
+            Tenant.room_id == room.id,
+            Contract.end_date >= today
+        ).first()
+
+        if active_contract:
             occupied_rooms += 1
-            contracts = Contract.query.filter_by(tenant_id=tenant.id).all()
-            for contract in contracts:
-                bills = Bill.query.filter(
-                    Bill.contract_id == contract.id,
-                    Bill.month >= current_month
-                ).all()
-                for bill in bills:
-                    total_due += bill.total
-                    if bill.paid:
-                        total_paid += bill.total
-                    # Quá hạn nếu qua ngày 5 tháng sau
-                    due_date = bill.month.replace(day=28) + timedelta(days=8)  # khoảng ngày 5 tháng sau
-                    if datetime.now().date() > due_date:
+            # Lấy tất cả bill của tháng hiện tại
+            bills = Bill.query.filter(
+                Bill.contract_id == active_contract.id,
+                Bill.month >= current_month_start
+            ).all()
+            for bill in bills:
+                total_due += bill.total
+                if bill.paid:
+                    total_paid += bill.total
+                # Quá hạn: chưa thanh toán và đã qua ngày 5 tháng sau
+                if not bill.paid:
+                    due_date = (bill.month + timedelta(days=32)).replace(day=5)
+                    if today > due_date:
                         overdue_bills += 1
-        # Nếu phòng trống thì không tính gì thêm
-    
+
     total_unpaid = total_due - total_paid
-    
+
     return render_template(
-        'dashboard.html', 
+        'dashboard.html',
         rooms=rooms,
         total_rooms=total_rooms,
         occupied_rooms=occupied_rooms,
         total_due=total_due,
         total_paid=total_paid,
-        total_unpaid=total_due - total_paid,
+        total_unpaid=total_unpaid,
         overdue_bills=overdue_bills
     )
 
