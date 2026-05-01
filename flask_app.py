@@ -634,8 +634,13 @@ def create_bill(contract_id):
     last_bill = Bill.query.filter_by(contract_id=contract_id).order_by(Bill.month.desc()).first()
     
     # Tính đơn giá trung bình dự kiến để hiển thị trên form
-    # Dùng tháng hiện tại làm mặc định
-    preview_month = datetime.now().replace(day=1)
+    # Ưu tiên dùng tháng từ query string (?month=YYYY-MM), fallback về tháng hiện tại
+    month_param = request.args.get('month', '')
+    try:
+        preview_month = datetime.strptime(month_param + '-01', '%Y-%m-%d').replace(day=1)
+    except (ValueError, TypeError):
+        preview_month = datetime.now().replace(day=1)
+    
     total_kwh_preview = get_total_electricity_usage_in_month(preview_month)
     total_cost_preview = calculate_total_electricity_cost_before_vat(total_kwh_preview)
     average_price_preview = total_cost_preview / total_kwh_preview if total_kwh_preview > 0 else 0
@@ -685,7 +690,9 @@ def create_bill(contract_id):
         tenant=tenant,
         room=room,
         last_bill=last_bill,
-        average_price_preview=round(average_price_preview)  # Làm tròn để hiển thị đẹp
+        preview_month=preview_month.strftime('%Y-%m'),
+        selected_month=month_param,
+        average_price_preview=round(average_price_preview)
     )
     
 @app.route('/pay_bill/<int:bill_id>', methods=['POST'])
