@@ -455,12 +455,20 @@ def dashboard():
             Contract.end_date >= today
         ).first()
 
+    for room in rooms:
+        # Chỉ tính phòng có hợp đồng còn hiệu lực
+        active_contract = Contract.query.join(Tenant).filter(
+            Tenant.room_id == room.id,
+            Contract.end_date >= today
+        ).first()
+
         if active_contract:
             occupied_rooms += 1
-            # Lấy tất cả bill của tháng hiện tại
+            # Lấy bills trong 2 tháng gần nhất để không bỏ sót bill tháng trước chưa thanh toán
+            two_months_ago = (current_month_start - timedelta(days=32)).replace(day=1)
             bills = Bill.query.filter(
                 Bill.contract_id == active_contract.id,
-                Bill.month >= current_month_start
+                Bill.month >= two_months_ago
             ).all()
             for bill in bills:
                 total_due += bill.total
@@ -799,36 +807,41 @@ def edit_bill(bill_id):
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
-        month_str = request.form['month'] + '-01'
-        month = datetime.strptime(month_str, '%Y-%m-%d').date()
-        
-        electricity_old = float(request.form['electricity_old'])
-        electricity_new = float(request.form['electricity_new'])
-        water_old = float(request.form['water_old'])
-        water_new = float(request.form['water_new'])
-        
-        # Tính lại toàn bộ theo bài toán mới
-        bill_data = calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, month)
-        
-        # Cập nhật bill
-        bill.month = month
-        bill.electricity_old = electricity_old
-        bill.electricity_new = electricity_new
-        bill.water_old = water_old
-        bill.water_new = water_new
-        bill.electricity_usage = bill_data['electricity_usage']
-        bill.water_usage = bill_data['water_usage']
-        bill.average_price_before_vat = bill_data['average_price_before_vat']
-        bill.room_electricity_before_vat = bill_data['room_electricity_before_vat']
-        bill.electricity_vat = bill_data['electricity_vat']
-        bill.room_electricity_with_vat = bill_data['room_electricity_with_vat']
-        bill.water_cost = bill_data['water_cost']
-        bill.total = bill_data['total']
-        
-        db.session.commit()
-        flash('Hóa đơn đã được cập nhật thành công!', 'success')
-        return redirect(url_for('contract_detail', contract_id=contract.id))
-    
+        try:
+            month_str = request.form['month'] + '-01'
+            month = datetime.strptime(month_str, '%Y-%m-%d').date()
+
+            electricity_old = float(request.form['electricity_old'])
+            electricity_new = float(request.form['electricity_new'])
+            water_old = float(request.form['water_old'])
+            water_new = float(request.form['water_new'])
+
+            # Tính lại toàn bộ theo bài toán mới
+            bill_data = calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, month)
+
+            # Cập nhật bill
+            bill.month = month
+            bill.electricity_old = electricity_old
+            bill.electricity_new = electricity_new
+            bill.water_old = water_old
+            bill.water_new = water_new
+            bill.electricity_usage = bill_data['electricity_usage']
+            bill.water_usage = bill_data['water_usage']
+            bill.average_price_before_vat = bill_data['average_price_before_vat']
+            bill.room_electricity_before_vat = bill_data['room_electricity_before_vat']
+            bill.electricity_vat = bill_data['electricity_vat']
+            bill.room_electricity_with_vat = bill_data['room_electricity_with_vat']
+            bill.water_cost = bill_data['water_cost']
+            bill.total = bill_data['total']
+
+            db.session.commit()
+            flash('Hóa đơn đã được cập nhật thành công!', 'success')
+            return redirect(url_for('contract_detail', contract_id=contract.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Lỗi khi cập nhật hóa đơn: {str(e)}', 'danger')
+            return redirect(url_for('edit_bill', bill_id=bill_id))
+
     # GET: hiển thị form sửa
     return render_template('edit_bill.html', bill=bill, tenant=tenant, room=room, contract=contract,
                            average_price_before_vat=bill.average_price_before_vat)
