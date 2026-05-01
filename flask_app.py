@@ -226,7 +226,7 @@ def login():
         if user and check_password_hash(user.password, password):
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash('Invalid username or password')
+        flash('Tên đăng nhập hoặc mật khẩu không đúng', 'danger')
     return render_template('login.html')
 
 @app.route('/logout')
