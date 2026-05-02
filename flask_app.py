@@ -144,28 +144,41 @@ def calculate_total_electricity_cost_before_vat(total_kwh):
 # Hàm tính hóa đơn mới (theo bài toán của bạn)
 def calculate_bill(contract, electricity_old, electricity_new, water_old, water_new, bill_month):
     room = Room.query.get(Tenant.query.get(contract.tenant_id).room_id)
-    
+
     electricity_usage = max(electricity_new - electricity_old, 0)
     water_usage = max(water_new - water_old, 0)
-    
+
     water_cost = calculate_water_cost(water_usage)
-    
-    # Lấy tổng kWh toàn nhà tháng này
-    total_kwh = get_total_electricity_usage_in_month(bill_month) + electricity_usage
-    
-    # Bảo vệ chia cho 0
-    if total_kwh == 0:
-        average_price = 0.0
+
+    # Lấy đơn giá trung bình từ bảng TotalElectricityMonth (admin đã nhập tổng điện toàn nhà)
+    # Đây là cách đúng: mọi phòng trong cùng tháng đều dùng chung 1 đơn giá trung bình
+    month_start = bill_month.replace(day=1) if hasattr(bill_month, 'replace') else bill_month
+    total_elec_entry = TotalElectricityMonth.query.filter(
+        TotalElectricityMonth.month == month_start
+    ).first()
+
+    if total_elec_entry and total_elec_entry.average_price > 0:
+        # Dùng đơn giá trung bình đã tính sẵn từ tổng điện toàn nhà
+        average_price = total_elec_entry.average_price
+    else:
+        # Fallback: tính từ tổng bill đã có trong tháng (kém chính xác hơn)
+        # Xảy ra khi admin chưa nhập tổng điện tháng đó
+        total_kwh = get_total_electricity_usage_in_month(bill_month) + electricity_usage
+        if total_kwh == 0:
+            average_price = 0.0
+        else:
+            total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
+            average_price = total_cost_before_vat / total_kwh
+
+    if electricity_usage == 0:
         room_electricity_before_vat = 0.0
     else:
-        total_cost_before_vat = calculate_total_electricity_cost_before_vat(total_kwh)
-        average_price = total_cost_before_vat / total_kwh
         room_electricity_before_vat = electricity_usage * average_price
-    
+
     room_electricity_with_vat = room_electricity_before_vat * (1 + VAT_RATE)
-    
+
     total = room.rent_price + room.internet_fee + room_electricity_with_vat + water_cost
-    
+
     return {
         'total': total,
         'electricity_usage': electricity_usage,
@@ -658,7 +671,15 @@ def create_bill(contract_id):
     
     total_kwh_preview = get_total_electricity_usage_in_month(preview_month)
     total_cost_preview = calculate_total_electricity_cost_before_vat(total_kwh_preview)
-    average_price_preview = total_cost_preview / total_kwh_preview if total_kwh_preview > 0 else 0
+
+    # Ưu tiên lấy đơn giá từ TotalElectricityMonth nếu admin đã nhập tổng điện tháng đó
+    total_elec_entry = TotalElectricityMonth.query.filter(
+        TotalElectricityMonth.month == preview_month.date() if hasattr(preview_month, 'date') else preview_month
+    ).first()
+    if total_elec_entry and total_elec_entry.average_price > 0:
+        average_price_preview = total_elec_entry.average_price
+    else:
+        average_price_preview = total_cost_preview / total_kwh_preview if total_kwh_preview > 0 else 0
     
     if request.method == 'POST':
         try:
